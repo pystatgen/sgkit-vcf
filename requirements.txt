@@ -1,0 +1,7 @@
+cyvcf2
+dask[array]
+numba
+numpy
+xarray
+zarr
+git+https://github.com/pystatgen/sgkit

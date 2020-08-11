@@ -1,0 +1,19 @@
+import pytest
+from cyvcf2 import VCF
+
+from sgkit_vcf.csi import read_csi
+from sgkit_vcf.vcf_partition import get_csi_path
+from sgkit_vcf.vcf_reader import count_variants
+
+
+@pytest.mark.parametrize(
+    "vcf_file", ["CEUTrio.20.21.gatk3.4.csi.g.vcf.bgz",],
+)
+def test_record_counts_csi(shared_datadir, vcf_file):
+    # Check record counts in csi with actual count of VCF
+    vcf_path = shared_datadir / vcf_file
+    csi_path = get_csi_path(vcf_path)
+    csi = read_csi(csi_path)
+
+    for i, contig in enumerate(VCF(vcf_path).seqnames):
+        assert csi.record_counts[i] == count_variants(vcf_path, contig)
