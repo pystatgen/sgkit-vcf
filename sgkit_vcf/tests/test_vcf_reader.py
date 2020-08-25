@@ -33,10 +33,12 @@ def test_vcf_to_zarr__small_vcf(shared_datadir):
             ["AC", "A", "ATG", "C"],
         ],
     )
+    assert ds["variant_allele"].dtype == "O"
     assert_array_equal(
         ds["variant_id"],
         [".", ".", "rs6054257", ".", "rs6040355", ".", "microsat1", ".", "rsTest"],
     )
+    assert ds["variant_id"].dtype == "O"
     assert_array_equal(
         ds["variant_id_mask"],
         [True, True, False, True, False, True, False, True, False],
@@ -94,6 +96,9 @@ def test_vcf_to_zarr__large_vcf(shared_datadir):
     assert ds["variant_id_mask"].shape == (19910,)
     assert ds["variant_position"].shape == (19910,)
 
+    assert ds["variant_allele"].dtype == "O"
+    assert ds["variant_id"].dtype == "O"
+
 
 def test_vcf_to_zarr__parallel(shared_datadir):
     path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
@@ -113,6 +118,9 @@ def test_vcf_to_zarr__parallel(shared_datadir):
     assert ds["variant_id_mask"].shape == (19910,)
     assert ds["variant_position"].shape == (19910,)
 
+    assert ds["variant_allele"].dtype == "S48"
+    assert ds["variant_id"].dtype == "S1"
+
 
 def test_vcf_to_zarr__parallel_partitioned(shared_datadir):
     path = shared_datadir / "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf.gz"
@@ -127,7 +135,7 @@ def test_vcf_to_zarr__parallel_partitioned(shared_datadir):
     assert ds["variant_id"].shape == (1406,)
 
 
-def test_vcf_to_zarr__mutiple(shared_datadir):
+def test_vcf_to_zarr__multiple(shared_datadir):
     paths = [
         shared_datadir / "CEUTrio.20.gatk3.4.g.vcf.bgz",
         shared_datadir / "CEUTrio.21.gatk3.4.g.vcf.bgz",
