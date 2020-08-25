@@ -171,7 +171,10 @@ def vcf_to_zarr_parallel(
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
-    paths = vcf_to_zarrs(input, output, regions, chunk_length, chunk_width, tempdir)
+    if tempdir is None:
+        tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
+
+    paths = vcf_to_zarrs(input, tempdir, regions, chunk_length, chunk_width)
 
     ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
 
@@ -190,7 +193,6 @@ def vcf_to_zarrs(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
-    tempdir: Optional[Path] = None,
 ) -> Sequence[Path]:
     """Convert specified regions of one or more VCF files to zarr files."""
 
@@ -213,16 +215,13 @@ def vcf_to_zarrs(
 
     assert len(inputs) == len(input_regions)
 
-    if tempdir is None:
-        tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
-
     tasks = []
     parts = []
     for i, input in enumerate(inputs):
         filename = Path(input).name
         input_region_list = input_regions[i] or [None]  # type: ignore
         for r, region in enumerate(input_region_list):
-            part = tempdir / filename / f"part-{r}.zarr"
+            part = Path(output) / filename / f"part-{r}.zarr"
             parts.append(part)
             task = dask.delayed(vcf_to_zarr_sequential)(
                 input,
