@@ -179,6 +179,7 @@ def vcf_to_zarr_parallel(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+    tempdir: Optional[Path] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
@@ -201,7 +202,8 @@ def vcf_to_zarr_parallel(
 
     assert len(inputs) == len(input_regions)
 
-    tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
+    if tempdir is None:
+        tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
 
     datasets = []
     parts = []
@@ -254,6 +256,7 @@ def vcf_to_zarr(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]] = None,
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+    tempdir: Optional[Path] = None,
 ) -> None:
     if (isinstance(input, str) or isinstance(input, Path)) and (
         regions is None or isinstance(regions, str)
