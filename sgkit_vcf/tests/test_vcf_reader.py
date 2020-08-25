@@ -155,8 +155,10 @@ def test_vcf_to_zarr__multiple(shared_datadir):
     assert ds["variant_id_mask"].shape == (19910,)
     assert ds["variant_position"].shape == (19910,)
 
+    assert ds.chunks["variants"] == (5000, 5000, 5000, 4910)
 
-def test_vcf_to_zarr__mutiple_partitioned(shared_datadir):
+
+def test_vcf_to_zarr__multiple_partitioned(shared_datadir):
     paths = [
         shared_datadir / "CEUTrio.20.gatk3.4.g.vcf.bgz",
         shared_datadir / "CEUTrio.21.gatk3.4.g.vcf.bgz",
@@ -177,6 +179,8 @@ def test_vcf_to_zarr__mutiple_partitioned(shared_datadir):
     assert ds["variant_id"].shape == (19910,)
     assert ds["variant_id_mask"].shape == (19910,)
     assert ds["variant_position"].shape == (19910,)
+
+    assert ds.chunks["variants"] == (5000, 5000, 5000, 4910)
 
 
 def test_vcf_to_zarr__mutiple_partitioned_invalid_regions(shared_datadir):
