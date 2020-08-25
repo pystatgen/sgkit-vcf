@@ -161,18 +161,6 @@ def vcf_to_zarr_sequential(
                 ds.to_zarr(output, append_dim=DIM_VARIANT)
 
 
-def vcf_to_dataset(
-    input: PathType,
-    output: PathType,
-    region: Optional[str] = None,
-    chunk_length: int = 10_000,
-    chunk_width: int = 1_000,
-) -> xr.Dataset:
-    vcf_to_zarr_sequential(input, output, region, chunk_length, chunk_width)
-    ds: xr.Dataset = xr.open_zarr(str(output))  # type: ignore[no-untyped-call]
-    return ds
-
-
 def vcf_to_zarr_parallel(
     input: Union[PathType, Sequence[PathType]],
     output: PathType,
@@ -182,6 +170,29 @@ def vcf_to_zarr_parallel(
     tempdir: Optional[Path] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
+
+    paths = vcf_to_zarrs(input, output, regions, chunk_length, chunk_width, tempdir)
+
+    ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
+
+    # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
+    with dask.config.set({"optimization.fuse.ave-width": 50}):
+        ds.to_zarr(output, mode="w")
+
+    # Delete intermediate files from temporary directory
+    for path in paths:
+        shutil.rmtree(path)
+
+
+def vcf_to_zarrs(
+    input: Union[PathType, Sequence[PathType]],
+    output: PathType,
+    regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
+    chunk_length: int = 10_000,
+    chunk_width: int = 1_000,
+    tempdir: Optional[Path] = None,
+) -> Sequence[Path]:
+    """Convert specified regions of one or more VCF files to zarr files."""
 
     if isinstance(input, str) or isinstance(input, Path):
         # Single input
@@ -205,7 +216,7 @@ def vcf_to_zarr_parallel(
     if tempdir is None:
         tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
 
-    datasets = []
+    tasks = []
     parts = []
     for i, input in enumerate(inputs):
         filename = Path(input).name
@@ -213,44 +224,40 @@ def vcf_to_zarr_parallel(
         for r, region in enumerate(input_region_list):
             part = tempdir / filename / f"part-{r}.zarr"
             parts.append(part)
-            ds = dask.delayed(vcf_to_dataset)(
+            task = dask.delayed(vcf_to_zarr_sequential)(
                 input,
                 output=part,
                 region=region,
                 chunk_length=chunk_length,
                 chunk_width=chunk_width,
             )
-            datasets.append(ds)
-    datasets = dask.compute(*datasets)
+            tasks.append(task)
+    dask.compute(*tasks)
+    return parts
 
-    # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
-    with dask.config.set({"optimization.fuse.ave-width": 50}):
 
-        # Combine the datasets into one
-        ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
-        ds: xr.Dataset = ds.chunk({"variants": chunk_length, "samples": chunk_width})  # type: ignore
+def zarrs_to_dataset(
+    paths: Sequence[Path], chunk_length: int = 10_000, chunk_width: int = 1_000,
+) -> xr.Dataset:
 
-        # Set variable length strings to fixed length ones to avoid xarray/conventions.py:188 warning
-        # (Also avoids this issue: https://github.com/pydata/xarray/issues/3476)
-        max_variant_id_length = max(
-            ds.attrs["max_variant_id_length"] for ds in datasets
-        )
-        max_variant_allele_length = max(
-            ds.attrs["max_variant_allele_length"] for ds in datasets
-        )
-        ds["variant_id"] = ds["variant_id"].astype(f"S{max_variant_id_length}")
-        ds["variant_allele"] = ds["variant_allele"].astype(
-            f"S{max_variant_allele_length}"
-        )
-        del ds.attrs["max_variant_id_length"]
-        del ds.attrs["max_variant_allele_length"]
+    datasets = [xr.open_zarr(str(path)) for path in paths]  # type: ignore[no-untyped-call]
 
-        delayed = ds.to_zarr(output, mode="w", compute=False)
-        # delayed.visualize()
-        delayed.compute()
+    # Combine the datasets into one
+    ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
+    ds: xr.Dataset = ds.chunk({"variants": chunk_length, "samples": chunk_width})
 
-        # Delete intermediate files from temporary directory
-        shutil.rmtree(tempdir)
+    # Set variable length strings to fixed length ones to avoid xarray/conventions.py:188 warning
+    # (Also avoids this issue: https://github.com/pydata/xarray/issues/3476)
+    max_variant_id_length = max(ds.attrs["max_variant_id_length"] for ds in datasets)
+    max_variant_allele_length = max(
+        ds.attrs["max_variant_allele_length"] for ds in datasets
+    )
+    ds["variant_id"] = ds["variant_id"].astype(f"S{max_variant_id_length}")
+    ds["variant_allele"] = ds["variant_allele"].astype(f"S{max_variant_allele_length}")
+    del ds.attrs["max_variant_id_length"]
+    del ds.attrs["max_variant_allele_length"]
+
+    return ds
 
 
 def vcf_to_zarr(
