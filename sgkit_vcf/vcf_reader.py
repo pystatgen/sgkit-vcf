@@ -224,29 +224,33 @@ def vcf_to_zarr_parallel(
     datasets = dask.compute(*datasets)
 
     # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
-    dask.config.set({"optimization.fuse.ave-width": 50})
+    with dask.config.set({"optimization.fuse.ave-width": 50}):
 
-    # Combine the datasets into one
-    ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
-    ds: xr.Dataset = ds.chunk({"variants": chunk_length, "samples": chunk_width})  # type: ignore
+        # Combine the datasets into one
+        ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
+        ds: xr.Dataset = ds.chunk({"variants": chunk_length, "samples": chunk_width})  # type: ignore
 
-    # Set variable length strings to fixed length ones to avoid xarray/conventions.py:188 warning
-    # (Also avoids this issue: https://github.com/pydata/xarray/issues/3476)
-    max_variant_id_length = max(ds.attrs["max_variant_id_length"] for ds in datasets)
-    max_variant_allele_length = max(
-        ds.attrs["max_variant_allele_length"] for ds in datasets
-    )
-    ds["variant_id"] = ds["variant_id"].astype(f"S{max_variant_id_length}")
-    ds["variant_allele"] = ds["variant_allele"].astype(f"S{max_variant_allele_length}")
-    del ds.attrs["max_variant_id_length"]
-    del ds.attrs["max_variant_allele_length"]
+        # Set variable length strings to fixed length ones to avoid xarray/conventions.py:188 warning
+        # (Also avoids this issue: https://github.com/pydata/xarray/issues/3476)
+        max_variant_id_length = max(
+            ds.attrs["max_variant_id_length"] for ds in datasets
+        )
+        max_variant_allele_length = max(
+            ds.attrs["max_variant_allele_length"] for ds in datasets
+        )
+        ds["variant_id"] = ds["variant_id"].astype(f"S{max_variant_id_length}")
+        ds["variant_allele"] = ds["variant_allele"].astype(
+            f"S{max_variant_allele_length}"
+        )
+        del ds.attrs["max_variant_id_length"]
+        del ds.attrs["max_variant_allele_length"]
 
-    delayed = ds.to_zarr(output, mode="w", compute=False)
-    # delayed.visualize()
-    delayed.compute()
+        delayed = ds.to_zarr(output, mode="w", compute=False)
+        # delayed.visualize()
+        delayed.compute()
 
-    # Delete intermediate files from temporary directory
-    shutil.rmtree(tempdir)
+        # Delete intermediate files from temporary directory
+        shutil.rmtree(tempdir)
 
 
 def vcf_to_zarr(
