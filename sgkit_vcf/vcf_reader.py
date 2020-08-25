@@ -196,7 +196,7 @@ def vcf_to_zarr_parallel(
         else:
             if len(regions) == 0 or isinstance(regions[0], str):
                 raise ValueError(
-                    f"Multiple input regions must be a sequence of sequence of strings: {regions}"
+                    f"For multiple inputs, multiple input regions must be a sequence of sequence of strings: {regions}"
                 )
             input_regions = regions
 

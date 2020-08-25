@@ -195,6 +195,6 @@ def test_vcf_to_zarr__mutiple_partitioned_invalid_regions(shared_datadir):
 
     with pytest.raises(
         ValueError,
-        match=r"Multiple input regions must be a sequence of sequence of strings",
+        match=r"multiple input regions must be a sequence of sequence of strings",
     ):
         vcf_to_zarr(paths, output, regions=regions, chunk_length=5_000)
