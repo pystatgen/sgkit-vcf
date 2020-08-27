@@ -188,7 +188,31 @@ def vcf_to_zarrs(
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
 ) -> Sequence[Path]:
-    """Convert specified regions of one or more VCF files to zarr files."""
+    """Convert specified regions of one or more VCF files to multiple Zarr on-disk stores,
+    one per region.
+
+    Parameters
+    ----------
+    input : Union[PathType, Sequence[PathType]]
+        A path (or paths) to the input BCF or VCF file (or files). VCF files should
+        be compressed and have a .tbi or .csi index file. BCF files should have a .csi
+        index file.
+    output : PathType
+        The directory containing the multiple Zarr output stores.
+    regions : Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]], optional
+        Genomic region or regions to extract variants for. For multiple inputs, multiple
+        input regions are specified as a sequence of values which may be None, or a
+        sequence of region strings.
+    chunk_length : int, optional
+        Length (number of variants) of chunks in which data are stored, by default 10_000.
+    chunk_width : int, optional
+        Width (number of samples) to use when storing chunks in output, by default 1_000.
+
+    Returns
+    -------
+    Sequence[Path]
+        A list of paths to the Zarr outputs.
+    """
 
     if isinstance(input, str) or isinstance(input, Path):
         # Single input
@@ -235,6 +259,25 @@ def vcf_to_zarrs(
 def zarrs_to_dataset(
     paths: Sequence[Path], chunk_length: int = 10_000, chunk_width: int = 1_000,
 ) -> xr.Dataset:
+    """Combine multiple Zarr stores to a single Xarray dataset.
+
+    The Zarr stores are concatenated and rechunked to produce a single combined dataset.
+
+    Parameters
+    ----------
+    paths : Sequence[Path]
+        A list of paths to the Zarr stores to combine, typically the return value of
+        `vcf_to_zarrs`.
+    chunk_length : int, optional
+        Length (number of variants) of chunks in which data are stored, by default 10_000.
+    chunk_width : int, optional
+        Width (number of samples) to use when storing chunks in output, by default 1_000.
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset representing the combined dataset.
+    """
 
     datasets = [xr.open_zarr(str(path)) for path in paths]  # type: ignore[no-untyped-call]
 
@@ -265,6 +308,38 @@ def vcf_to_zarr(
     chunk_width: int = 1_000,
     tempdir: Optional[Path] = None,
 ) -> None:
+    """Convert specified regions of one or more VCF files to a single Zarr on-disk store.
+
+    For a single input and a single region, the conversion is carried out sequentially.
+
+    For multiple outputs or regions, the conversion is carried out in parallel, by writing
+    the output for each region to a separate, intermediate Zarr store in `tempdir`. Then,
+    in a second step the intermediate outputs are concatenated and rechunked into the final
+    output Zarr store in `output`.
+
+    For more control over these two steps, consider using `vcf_to_zarrs` followed by
+    `zarrs_to_dataset`, then saving the dataset using Xarray's `to_zarr` function.
+
+    Parameters
+    ----------
+    input : Union[PathType, Sequence[PathType]]
+        A path (or paths) to the input BCF or VCF file (or files). VCF files should
+        be compressed and have a .tbi or .csi index file. BCF files should have a .csi
+        index file.
+    output : PathType
+        The path to the output Zarr file.
+    regions : Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]], optional
+        Genomic region or regions to extract variants for. For multiple inputs, multiple
+        input regions are specified as a sequence of values which may be None, or a
+        sequence of region strings.
+    chunk_length : int, optional
+        Length (number of variants) of chunks in which data are stored, by default 10_000.
+    chunk_width : int, optional
+        Width (number of samples) to use when storing chunks in output, by default 1_000.
+    tempdir : Optional[Path], optional
+        Temporary directory where intermediate files are stored. The default None means
+        use the system default temporary directory.
+    """
     if (isinstance(input, str) or isinstance(input, Path)) and (
         regions is None or isinstance(regions, str)
     ):
