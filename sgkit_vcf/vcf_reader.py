@@ -62,7 +62,7 @@ def vcf_to_zarr_sequential(
         sample_id = np.array(vcf.samples, dtype=str)
         n_sample = len(sample_id)
         n_allele = alt_number + 1
-        n_ploidy = 2
+        n_ploidy = 2  # TODO: support more than diploid
 
         variant_contig_names = vcf.seqnames
 
