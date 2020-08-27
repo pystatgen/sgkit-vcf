@@ -17,3 +17,11 @@ def test_record_counts_csi(shared_datadir, vcf_file):
 
     for i, contig in enumerate(VCF(vcf_path).seqnames):
         assert csi.record_counts[i] == count_variants(vcf_path, contig)
+
+
+@pytest.mark.parametrize(
+    "file", ["CEUTrio.20.21.gatk3.4.g.vcf.bgz", "CEUTrio.20.21.gatk3.4.g.vcf.bgz.tbi"],
+)
+def test_read_csi__invalid_csi(shared_datadir, file):
+    with pytest.raises(ValueError, match=r"File not in CSI format."):
+        read_csi(shared_datadir / file)

@@ -81,7 +81,8 @@ def read_csi(file: PathType) -> CSIIndex:
     """Parse a CSI file into a queryable datastructure"""
     with gzip.open(file) as f:
         (magic,) = read_bytes(f, "4s")
-        assert magic == b"CSI\x01"
+        if magic != b"CSI\x01":
+            raise ValueError("File not in CSI format.")
 
         min_shift, depth, l_aux = read_bytes(f, "<3i")
         (aux,) = read_bytes(f, f"{l_aux}s", ("",))

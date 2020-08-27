@@ -71,7 +71,8 @@ def read_tabix(file: PathType) -> TabixIndex:
     """Parse a tabix file into a queryable datastructure"""
     with gzip.open(file) as f:
         (magic,) = read_bytes(f, "4s")
-        assert magic == b"TBI\x01"
+        if magic != b"TBI\x01":
+            raise ValueError("File not in Tabix format.")
 
         header = Header(*read_bytes(f, "<8i"))
 
