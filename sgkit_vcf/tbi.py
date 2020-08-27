@@ -1,3 +1,8 @@
+"""Functions for parsing tabix files into Python objects so they can be inspected.
+
+The implementation follows the [Tabix index file format](https://samtools.github.io/hts-specs/tabix.pdf).
+
+"""
 import gzip
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -69,7 +74,23 @@ class TabixIndex:
 
 
 def read_tabix(file: PathType) -> TabixIndex:
-    """Parse a tabix file into a queryable datastructure"""
+    """Parse a tabix file into a `TabixIndex` object.
+
+    Parameters
+    ----------
+    file : PathType
+        The path to the tabix file.
+
+    Returns
+    -------
+    TabixIndex
+        An object representing a tabix index.
+
+    Raises
+    ------
+    ValueError
+        If the file is not a tabix file.
+    """
     with gzip.open(file) as f:
         magic = read_bytes_as_value(f, "4s")
         if magic != b"TBI\x01":

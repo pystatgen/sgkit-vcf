@@ -1,3 +1,8 @@
+"""Functions for parsing CSI files into Python objects so they can be inspected.
+
+The implementation follows the [CSI index file format](http://samtools.github.io/hts-specs/CSIv1.pdf).
+
+"""
 import gzip
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -79,7 +84,23 @@ def get_first_locus_in_bin(csi: CSIIndex, bin: int) -> int:
 
 
 def read_csi(file: PathType) -> CSIIndex:
-    """Parse a CSI file into a queryable datastructure"""
+    """Parse a CSI file into a `CSIIndex` object.
+
+    Parameters
+    ----------
+    file : PathType
+        The path to the CSI file.
+
+    Returns
+    -------
+    CSIIndex
+        An object representing a CSI index.
+
+    Raises
+    ------
+    ValueError
+        If the file is not a CSI file.
+    """
     with gzip.open(file) as f:
         magic = read_bytes_as_value(f, "4s")
         if magic != b"CSI\x01":
