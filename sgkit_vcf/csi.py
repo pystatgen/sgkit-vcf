@@ -5,12 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import (
-    at_eof,
-    get_file_offset,
-    read_bytes_as_tuple,
-    read_bytes_as_value,
-)
+from sgkit_vcf.utils import get_file_offset, read_bytes_as_tuple, read_bytes_as_value
 
 
 @dataclass
@@ -121,6 +116,6 @@ def read_csi(file: PathType) -> CSIIndex:
 
         n_no_coor = read_bytes_as_value(f, "<Q", 0)
 
-        assert at_eof(f)
+        assert len(f.read()) == 0
 
         return CSIIndex(min_shift, depth, aux, bins, record_counts, n_no_coor)

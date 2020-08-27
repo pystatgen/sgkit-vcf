@@ -5,12 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import (
-    at_eof,
-    get_file_offset,
-    read_bytes_as_tuple,
-    read_bytes_as_value,
-)
+from sgkit_vcf.utils import get_file_offset, read_bytes_as_tuple, read_bytes_as_value
 
 TABIX_LINEAR_INDEX_INTERVAL_SIZE = 1 << 14  # 16kb interval size
 
@@ -119,7 +114,7 @@ def read_tabix(file: PathType) -> TabixIndex:
 
         n_no_coor = read_bytes_as_value(f, "<Q", 0)
 
-        assert at_eof(f)
+        assert len(f.read()) == 0
 
         return TabixIndex(
             header, sequence_names, bins, linear_indexes, record_counts, n_no_coor

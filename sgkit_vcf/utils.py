@@ -76,14 +76,3 @@ def read_bytes_as_tuple(f: IO[Any], fmt: str) -> Sequence[Any]:
     """
     data = f.read(struct.calcsize(fmt))
     return struct.Struct(fmt).unpack(data)
-
-
-def at_eof(f: IO[Any]) -> bool:
-    """Check if a file stream is at the end of the file."""
-    pos = f.tell()
-    try:
-        f.seek(0, 2)  # seek to end of file
-        eof = f.tell()
-        return pos == eof
-    finally:
-        f.seek(pos)
