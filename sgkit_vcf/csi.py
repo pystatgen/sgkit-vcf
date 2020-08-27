@@ -5,7 +5,12 @@ from typing import Any, Sequence
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import at_eof, get_file_offset, read_bytes
+from sgkit_vcf.utils import (
+    at_eof,
+    get_file_offset,
+    read_bytes_as_tuple,
+    read_bytes_as_value,
+)
 
 
 @dataclass
@@ -28,6 +33,7 @@ class CSIIndex:
     aux: str
     bins: Sequence[Sequence[Bin]]
     record_counts: Sequence[int]
+    n_no_coor: int
 
     def offsets(self) -> Any:
         pseudo_bin = bin_limit(self.min_shift, self.depth) + 1
@@ -80,13 +86,13 @@ def get_first_locus_in_bin(csi: CSIIndex, bin: int) -> int:
 def read_csi(file: PathType) -> CSIIndex:
     """Parse a CSI file into a queryable datastructure"""
     with gzip.open(file) as f:
-        (magic,) = read_bytes(f, "4s")
+        magic = read_bytes_as_value(f, "4s")
         if magic != b"CSI\x01":
             raise ValueError("File not in CSI format.")
 
-        min_shift, depth, l_aux = read_bytes(f, "<3i")
-        (aux,) = read_bytes(f, f"{l_aux}s", ("",))
-        (n_ref,) = read_bytes(f, "<i")
+        min_shift, depth, l_aux = read_bytes_as_tuple(f, "<3i")
+        aux = read_bytes_as_value(f, f"{l_aux}s", "")
+        n_ref = read_bytes_as_value(f, "<i")
 
         pseudo_bin = bin_limit(min_shift, depth) + 1
 
@@ -95,14 +101,14 @@ def read_csi(file: PathType) -> CSIIndex:
 
         if n_ref > 0:
             for _ in range(n_ref):
-                (n_bin,) = read_bytes(f, "<i")
+                n_bin = read_bytes_as_value(f, "<i")
                 seq_bins = []
                 record_count = -1
                 for _ in range(n_bin):
-                    bin, loffset, n_chunk = read_bytes(f, "<IQi")
+                    bin, loffset, n_chunk = read_bytes_as_tuple(f, "<IQi")
                     chunks = []
                     for _ in range(n_chunk):
-                        chunk = Chunk(*read_bytes(f, "<QQ"))
+                        chunk = Chunk(*read_bytes_as_tuple(f, "<QQ"))
                         chunks.append(chunk)
                     seq_bins.append(Bin(bin, loffset, chunks))
 
@@ -113,8 +119,8 @@ def read_csi(file: PathType) -> CSIIndex:
                 bins.append(seq_bins)
                 record_counts.append(record_count)
 
-        (n_no_coor,) = read_bytes(f, "<Q", (0,))
+        n_no_coor = read_bytes_as_value(f, "<Q", 0)
 
         assert at_eof(f)
 
-        return CSIIndex(min_shift, depth, aux, bins, record_counts)
+        return CSIIndex(min_shift, depth, aux, bins, record_counts, n_no_coor)

@@ -5,7 +5,12 @@ from typing import Any, Sequence
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import at_eof, get_file_offset, read_bytes
+from sgkit_vcf.utils import (
+    at_eof,
+    get_file_offset,
+    read_bytes_as_tuple,
+    read_bytes_as_value,
+)
 
 TABIX_LINEAR_INDEX_INTERVAL_SIZE = 1 << 14  # 16kb interval size
 
@@ -41,6 +46,7 @@ class TabixIndex:
     bins: Sequence[Sequence[Bin]]
     linear_indexes: Sequence[Sequence[int]]
     record_counts: Sequence[int]
+    n_no_coor: int
 
     def offsets(self) -> Any:
         # Combine the linear indexes into one stacked array
@@ -70,11 +76,11 @@ class TabixIndex:
 def read_tabix(file: PathType) -> TabixIndex:
     """Parse a tabix file into a queryable datastructure"""
     with gzip.open(file) as f:
-        (magic,) = read_bytes(f, "4s")
+        magic = read_bytes_as_value(f, "4s")
         if magic != b"TBI\x01":
             raise ValueError("File not in Tabix format.")
 
-        header = Header(*read_bytes(f, "<8i"))
+        header = Header(*read_bytes_as_tuple(f, "<8i"))
 
         sequence_names = []
         bins = []
@@ -82,19 +88,19 @@ def read_tabix(file: PathType) -> TabixIndex:
         record_counts = []
 
         if header.l_nm > 0:
-            (names,) = read_bytes(f, f"<{header.l_nm}s")
+            names = read_bytes_as_value(f, f"<{header.l_nm}s")
             # Convert \0-terminated names to strings
             sequence_names = [str(name, "utf-8") for name in names.split(b"\x00")[:-1]]
 
             for _ in range(header.n_ref):
-                (n_bin,) = read_bytes(f, "<i")
+                n_bin = read_bytes_as_value(f, "<i")
                 seq_bins = []
                 record_count = -1
                 for _ in range(n_bin):
-                    bin, n_chunk = read_bytes(f, "<Ii")
+                    bin, n_chunk = read_bytes_as_tuple(f, "<Ii")
                     chunks = []
                     for _ in range(n_chunk):
-                        chunk = Chunk(*read_bytes(f, "<QQ"))
+                        chunk = Chunk(*read_bytes_as_tuple(f, "<QQ"))
                         chunks.append(chunk)
                     seq_bins.append(Bin(bin, chunks))
 
@@ -102,17 +108,19 @@ def read_tabix(file: PathType) -> TabixIndex:
                         assert len(chunks) == 2
                         n_mapped, n_unmapped = chunks[1].cnk_beg, chunks[1].cnk_end
                         record_count = n_mapped + n_unmapped
-                (n_intv,) = read_bytes(f, "<i")
+                n_intv = read_bytes_as_value(f, "<i")
                 linear_index = []
                 for _ in range(n_intv):
-                    (ioff,) = read_bytes(f, "<Q")
+                    ioff = read_bytes_as_value(f, "<Q")
                     linear_index.append(ioff)
                 bins.append(seq_bins)
                 linear_indexes.append(linear_index)
                 record_counts.append(record_count)
 
-        (n_no_coor,) = read_bytes(f, "<Q", (0,))
+        n_no_coor = read_bytes_as_value(f, "<Q", 0)
 
         assert at_eof(f)
 
-        return TabixIndex(header, sequence_names, bins, linear_indexes, record_counts)
+        return TabixIndex(
+            header, sequence_names, bins, linear_indexes, record_counts, n_no_coor
+        )
