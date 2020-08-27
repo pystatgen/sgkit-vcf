@@ -1,5 +1,4 @@
 import itertools
-import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -171,20 +170,15 @@ def vcf_to_zarr_parallel(
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
-    if tempdir is None:
-        tempdir = Path(tempfile.mkdtemp(prefix="vcf_to_zarr_"))
+    with tempfile.TemporaryDirectory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
 
-    paths = vcf_to_zarrs(input, tempdir, regions, chunk_length, chunk_width)
+        paths = vcf_to_zarrs(input, tmpdir, regions, chunk_length, chunk_width)
 
-    ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
+        ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
 
-    # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
-    with dask.config.set({"optimization.fuse.ave-width": 50}):
-        ds.to_zarr(output, mode="w")
-
-    # Delete intermediate files from temporary directory
-    for path in paths:
-        shutil.rmtree(path)
+        # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
+        with dask.config.set({"optimization.fuse.ave-width": 50}):
+            ds.to_zarr(output, mode="w")
 
 
 def vcf_to_zarrs(
