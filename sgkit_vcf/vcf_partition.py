@@ -65,11 +65,38 @@ def partition_into_regions(
     used to divide the file into parts.
 
     The number of parts can specified directly by providing `num_parts`, or by specifying the
-    desired size of each part by providing `target_part_size`. Exactly one of `num_parts` or
+    desired size (in bytes) of each (compressed) part by providing `target_part_size`. Exactly one of `num_parts` or
     `target_part_size` must be provided.
 
     Both `num_parts` and `target_part_size` serve as hints: the number of parts and their sizes
     may be more or less than these parameters.
+
+    Parameters
+    ----------
+    vcf_path : PathType
+        The path to the VCF file.
+    index_path : Optional[PathType], optional
+        The path to the VCF index (`.tbi` or `.csi`), by default None. If not specified, the
+        index path is constructed by appending the index suffix (`.tbi` or `.csi`) to the VCF path.
+    num_parts : Optional[int], optional
+        The desired number of parts to partition the VCF file into, by default None
+    target_part_size : Optional[int], optional
+        The desired size, in bytes, of each (compressed) part of the partitioned VCF, by default None
+
+    Returns
+    -------
+    Optional[Sequence[str]]
+        The region strings that partition the VCF file, or None if the VCF file should not be partitioned
+        (so there is only a single partition).
+
+    Raises
+    ------
+    ValueError
+        If neither of `num_parts` or `target_part_size` has been specified.
+    ValueError
+        If both of `num_parts` and `target_part_size` have been specified.
+    ValueError
+        If either of `num_parts` or `target_part_size` is not a positive integer.
     """
     if num_parts is None and target_part_size is None:
         raise ValueError("One of num_parts or target_part_size must be specified")
