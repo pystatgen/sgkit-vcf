@@ -213,7 +213,10 @@ def vcf_to_zarrs(
     parts = []
     for i, input in enumerate(inputs):
         filename = Path(input).name
-        input_region_list = input_regions[i] or [None]  # type: ignore
+        input_region_list = input_regions[i]
+        if input_region_list is None:
+            # single partition case: make a list so the loop below works
+            input_region_list = [None]  # type: ignore
         for r, region in enumerate(input_region_list):
             part = Path(output) / filename / f"part-{r}.zarr"
             parts.append(part)
