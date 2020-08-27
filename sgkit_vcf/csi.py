@@ -66,7 +66,7 @@ def get_level_for_bin(csi: CSIIndex, bin: int) -> int:
     for i in range(csi.depth, -1, -1):
         if bin >= get_first_bin_in_level(i):
             return i
-    raise ValueError  # pragma: no cover
+    raise ValueError(f"Cannot find level for bin {bin}.")  # pragma: no cover
 
 
 def get_first_locus_in_bin(csi: CSIIndex, bin: int) -> int:
