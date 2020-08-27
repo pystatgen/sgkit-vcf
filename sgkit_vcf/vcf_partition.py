@@ -44,8 +44,10 @@ def read_index(index_path: Path) -> Any:
 
 def get_sequence_names(vcf_path: Path, index: Any) -> Any:
     try:
+        # tbi stores sequence names
         return index.sequence_names
     except AttributeError:
+        # ... but csi doesn't, so fall back to the VCF header
         return VCF(vcf_path).seqnames
 
 
