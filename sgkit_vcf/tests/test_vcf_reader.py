@@ -1,3 +1,5 @@
+from typing import MutableMapping
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -82,6 +84,27 @@ def test_vcf_to_zarr__small_vcf(shared_datadir):
 def test_vcf_to_zarr__large_vcf(shared_datadir):
     path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
     output = "vcf.zarr"
+
+    vcf_to_zarr(path, output, chunk_length=5_000)
+    ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]
+
+    assert ds["sample_id"].shape == (1,)
+    assert ds["call_genotype"].shape == (19910, 1, 2)
+    assert ds["call_genotype_mask"].shape == (19910, 1, 2)
+    assert ds["call_genotype_phased"].shape == (19910, 1)
+    assert ds["variant_allele"].shape == (19910, 4)
+    assert ds["variant_contig"].shape == (19910,)
+    assert ds["variant_id"].shape == (19910,)
+    assert ds["variant_id_mask"].shape == (19910,)
+    assert ds["variant_position"].shape == (19910,)
+
+    assert ds["variant_allele"].dtype == "O"
+    assert ds["variant_id"].dtype == "O"
+
+
+def test_vcf_to_zarr__mutable_mapping(shared_datadir):
+    path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+    output: MutableMapping[str, bytes] = {}
 
     vcf_to_zarr(path, output, chunk_length=5_000)
     ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]

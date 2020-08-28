@@ -2,7 +2,7 @@ import itertools
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional, Sequence, Union
+from typing import Iterator, MutableMapping, Optional, Sequence, Union
 
 import dask
 import numpy as np
@@ -48,7 +48,7 @@ def get_region_start(region: str) -> int:
 
 def vcf_to_zarr_sequential(
     input: PathType,
-    output: PathType,
+    output: Union[PathType, MutableMapping[str, bytes]],
     region: Optional[str] = None,
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
@@ -162,7 +162,7 @@ def vcf_to_zarr_sequential(
 
 def vcf_to_zarr_parallel(
     input: Union[PathType, Sequence[PathType]],
-    output: PathType,
+    output: Union[PathType, MutableMapping[str, bytes]],
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
@@ -301,7 +301,7 @@ def zarrs_to_dataset(
 
 def vcf_to_zarr(
     input: Union[PathType, Sequence[PathType]],
-    output: PathType,
+    output: Union[PathType, MutableMapping[str, bytes]],
     *,
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]] = None,
     chunk_length: int = 10_000,
@@ -326,7 +326,7 @@ def vcf_to_zarr(
         A path (or paths) to the input BCF or VCF file (or files). VCF files should
         be compressed and have a .tbi or .csi index file. BCF files should have a .csi
         index file.
-    output : PathType
+    output : Union[PathType, MutableMapping[str, bytes]]
         The path to the output Zarr file.
     regions : Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]], optional
         Genomic region or regions to extract variants for. For multiple inputs, multiple
