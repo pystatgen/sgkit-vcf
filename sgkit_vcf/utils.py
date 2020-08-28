@@ -1,7 +1,12 @@
+import gzip
 import itertools
 import struct
 from pathlib import Path
-from typing import IO, Any, Iterator, Optional, Sequence, TypeVar
+from typing import IO, Any, Dict, Iterator, Optional, Sequence, TypeVar
+
+import fsspec
+
+from sgkit.typing import PathType
 
 T = TypeVar("T")
 
@@ -23,9 +28,19 @@ def chunks(iterator: Iterator[T], n: int) -> Iterator[Iterator[T]]:
         yield itertools.chain([first], rest_of_chunk)  # concatenate the first item back
 
 
-def get_file_length(path: Path) -> int:
+def get_file_length(
+    path: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> int:
     """Get the length of a file in bytes."""
-    return path.stat().st_size
+    if isinstance(path, Path):
+        return path.stat().st_size
+    else:
+        storage_options = storage_options or {}
+        fs = fsspec.open(path, **storage_options).fs
+        size = fs.size(path)
+        if size is None:
+            raise IOError(f"Cannot determine size of file {path}")  # pragma: no cover
+        return int(size)
 
 
 def get_file_offset(vfp: int) -> int:
@@ -76,3 +91,12 @@ def read_bytes_as_tuple(f: IO[Any], fmt: str) -> Sequence[Any]:
     """
     data = f.read(struct.calcsize(fmt))
     return struct.Struct(fmt).unpack(data)
+
+
+def open_gzip(file: PathType, storage_options: Optional[Dict[str, str]]) -> IO[Any]:
+    if isinstance(file, Path):
+        return gzip.open(file)
+    else:
+        storage_options = storage_options or {}
+        openfile: IO[Any] = fsspec.open(file, compression="gzip", **storage_options)
+        return openfile

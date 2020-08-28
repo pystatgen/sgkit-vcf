@@ -1,5 +1,6 @@
 import pytest
 
+from sgkit_vcf.tests.utils import path_for_test
 from sgkit_vcf.vcf_partition import partition_into_regions
 from sgkit_vcf.vcf_reader import count_variants
 
@@ -12,8 +13,11 @@ from sgkit_vcf.vcf_reader import count_variants
         "NA12878.prod.chr20snippet.g.vcf.gz",
     ],
 )
-def test_partition_into_regions__num_parts(shared_datadir, vcf_file):
-    vcf_path = shared_datadir / vcf_file
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__num_parts(shared_datadir, vcf_file, is_path):
+    vcf_path = path_for_test(shared_datadir, vcf_file, is_path)
 
     regions = partition_into_regions(vcf_path, num_parts=4)
 
@@ -24,8 +28,11 @@ def test_partition_into_regions__num_parts(shared_datadir, vcf_file):
     assert sum(part_variant_counts) == total_variants
 
 
-def test_partition_into_regions__num_parts_large(shared_datadir):
-    vcf_path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__num_parts_large(shared_datadir, is_path):
+    vcf_path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
 
     regions = partition_into_regions(vcf_path, num_parts=100)
     assert regions is not None
@@ -37,8 +44,11 @@ def test_partition_into_regions__num_parts_large(shared_datadir):
     assert sum(part_variant_counts) == total_variants
 
 
-def test_partition_into_regions__target_part_size(shared_datadir):
-    vcf_path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__target_part_size(shared_datadir, is_path):
+    vcf_path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
 
     regions = partition_into_regions(vcf_path, target_part_size=100_000)
     assert regions is not None
@@ -50,8 +60,11 @@ def test_partition_into_regions__target_part_size(shared_datadir):
     assert sum(part_variant_counts) == total_variants
 
 
-def test_partition_into_regions__invalid_arguments(shared_datadir):
-    vcf_path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__invalid_arguments(shared_datadir, is_path):
+    vcf_path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
 
     with pytest.raises(
         ValueError, match=r"One of num_parts or target_part_size must be specified"
@@ -70,16 +83,26 @@ def test_partition_into_regions__invalid_arguments(shared_datadir):
         partition_into_regions(vcf_path, target_part_size=0)
 
 
-def test_partition_into_regions__one_part(shared_datadir):
-    vcf_path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__one_part(shared_datadir, is_path):
+    vcf_path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
     assert partition_into_regions(vcf_path, num_parts=1) is None
 
 
-def test_partition_into_regions__missing_index(shared_datadir):
-    vcf_path = shared_datadir / "CEUTrio.20.21.gatk3.4.noindex.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_partition_into_regions__missing_index(shared_datadir, is_path):
+    vcf_path = path_for_test(
+        shared_datadir, "CEUTrio.20.21.gatk3.4.noindex.g.vcf.bgz", is_path
+    )
     with pytest.raises(ValueError, match=r"Cannot find .tbi or .csi file."):
         partition_into_regions(vcf_path, num_parts=2)
 
-    bogus_index_path = shared_datadir / "CEUTrio.20.21.gatk3.4.noindex.g.vcf.bgz.index"
+    bogus_index_path = path_for_test(
+        shared_datadir, "CEUTrio.20.21.gatk3.4.noindex.g.vcf.bgz.index", is_path
+    )
     with pytest.raises(ValueError, match=r"Only .tbi or .csi indexes are supported."):
         partition_into_regions(vcf_path, index_path=bogus_index_path, num_parts=2)
