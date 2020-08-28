@@ -357,6 +357,7 @@ def vcf_to_zarr(
             regions=regions,
             chunk_length=chunk_length,
             chunk_width=chunk_width,
+            tempdir=tempdir,
         )
 
 
