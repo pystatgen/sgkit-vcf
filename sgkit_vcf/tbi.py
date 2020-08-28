@@ -135,7 +135,7 @@ def read_tabix(file: PathType) -> TabixIndex:
 
         n_no_coor = read_bytes_as_value(f, "<Q", 0)
 
-        assert len(f.read()) == 0
+        assert len(f.read(1)) == 0
 
         return TabixIndex(
             header, sequence_names, bins, linear_indexes, record_counts, n_no_coor
