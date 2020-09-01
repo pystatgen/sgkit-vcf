@@ -198,7 +198,7 @@ def vcf_to_zarrs(
         be compressed and have a .tbi or .csi index file. BCF files should have a .csi
         index file.
     output : PathType
-        The directory containing the multiple Zarr output stores.
+        Path to directory containing the multiple Zarr output stores.
     regions : Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]], optional
         Genomic region or regions to extract variants for. For multiple inputs, multiple
         input regions are specified as a sequence of values which may be None, or a
@@ -327,7 +327,7 @@ def vcf_to_zarr(
         be compressed and have a .tbi or .csi index file. BCF files should have a .csi
         index file.
     output : Union[PathType, MutableMapping[str, bytes]]
-        The path to the output Zarr file.
+        Zarr store or path to directory in file system.
     regions : Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]], optional
         Genomic region or regions to extract variants for. For multiple inputs, multiple
         input regions are specified as a sequence of values which may be None, or a
