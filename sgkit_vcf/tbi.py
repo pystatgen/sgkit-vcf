@@ -3,15 +3,20 @@
 The implementation follows the [Tabix index file format](https://samtools.github.io/hts-specs/tabix.pdf).
 
 """
-import gzip
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import get_file_offset, read_bytes_as_tuple, read_bytes_as_value
+from sgkit_vcf.utils import (
+    get_file_offset,
+    open_gzip,
+    read_bytes_as_tuple,
+    read_bytes_as_value,
+)
 
+TABIX_EXTENSION = ".tbi"
 TABIX_LINEAR_INDEX_INTERVAL_SIZE = 1 << 14  # 16kb interval size
 
 
@@ -73,7 +78,9 @@ class TabixIndex:
         return file_offsets, contig_indexes, positions
 
 
-def read_tabix(file: PathType) -> TabixIndex:
+def read_tabix(
+    file: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> TabixIndex:
     """Parse a tabix file into a `TabixIndex` object.
 
     Parameters
@@ -91,7 +98,7 @@ def read_tabix(file: PathType) -> TabixIndex:
     ValueError
         If the file is not a tabix file.
     """
-    with gzip.open(file) as f:
+    with open_gzip(file, storage_options=storage_options) as f:
         magic = read_bytes_as_value(f, "4s")
         if magic != b"TBI\x01":
             raise ValueError("File not in Tabix format.")

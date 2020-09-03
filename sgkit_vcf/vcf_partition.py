@@ -1,12 +1,12 @@
-from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
+import fsspec
 import numpy as np
 from cyvcf2 import VCF
 
 from sgkit.typing import PathType
-from sgkit_vcf.csi import read_csi
-from sgkit_vcf.tbi import read_tabix
+from sgkit_vcf.csi import CSI_EXTENSION, read_csi
+from sgkit_vcf.tbi import TABIX_EXTENSION, read_tabix
 from sgkit_vcf.utils import ceildiv, get_file_length
 
 
@@ -17,32 +17,47 @@ def region_string(contig: str, start: int, end: Optional[int] = None) -> str:
         return f"{contig}:{start}-"
 
 
-def get_tabix_path(vcf_path: PathType) -> Optional[Path]:
-    tbi_path = Path(vcf_path).parent / (Path(vcf_path).name + ".tbi")
-    if tbi_path.exists():
-        return tbi_path
-    else:
-        return None
+def get_tabix_path(
+    vcf_path: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> Optional[str]:
+    url = str(vcf_path)
+    storage_options = storage_options or {}
+    tbi_path = url + TABIX_EXTENSION
+    with fsspec.open(url, **storage_options) as openfile:
+        fs = openfile.fs
+        if fs.exists(tbi_path):
+            return tbi_path
+        else:
+            return None
 
 
-def get_csi_path(vcf_path: PathType) -> Optional[Path]:
-    csi_path = Path(vcf_path).parent / (Path(vcf_path).name + ".csi")
-    if csi_path.exists():
-        return csi_path
-    else:
-        return None
+def get_csi_path(
+    vcf_path: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> Optional[str]:
+    url = str(vcf_path)
+    storage_options = storage_options or {}
+    csi_path = url + CSI_EXTENSION
+    with fsspec.open(url, **storage_options) as openfile:
+        fs = openfile.fs
+        if fs.exists(csi_path):
+            return csi_path
+        else:
+            return None
 
 
-def read_index(index_path: Path) -> Any:
-    if index_path.suffix == ".tbi":
-        return read_tabix(index_path)
-    elif index_path.suffix == ".csi":
-        return read_csi(index_path)
+def read_index(
+    index_path: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> Any:
+    url = str(index_path)
+    if url.endswith(TABIX_EXTENSION):
+        return read_tabix(url, storage_options=storage_options)
+    elif url.endswith(CSI_EXTENSION):
+        return read_csi(url, storage_options=storage_options)
     else:
         raise ValueError("Only .tbi or .csi indexes are supported.")
 
 
-def get_sequence_names(vcf_path: Path, index: Any) -> Any:
+def get_sequence_names(vcf_path: PathType, index: Any) -> Any:
     try:
         # tbi stores sequence names
         return index.sequence_names
@@ -57,6 +72,7 @@ def partition_into_regions(
     index_path: Optional[PathType] = None,
     num_parts: Optional[int] = None,
     target_part_size: Optional[int] = None,
+    storage_options: Optional[Dict[str, str]] = None,
 ) -> Optional[Sequence[str]]:
     """
     Calculate genomic region strings to partition a compressed VCF or BCF file into roughly equal parts.
@@ -82,6 +98,8 @@ def partition_into_regions(
         The desired number of parts to partition the VCF file into, by default None
     target_part_size : Optional[int], optional
         The desired size, in bytes, of each (compressed) part of the partitioned VCF, by default None
+    storage_options: Optional[Dict[str, str]], optional
+        Any additional parameters for the storage backend (see `fsspec.open`).
 
     Returns
     -------
@@ -111,14 +129,14 @@ def partition_into_regions(
         raise ValueError("target_part_size must be positive")
 
     if index_path is None:
-        index_path = get_tabix_path(vcf_path)
+        index_path = get_tabix_path(vcf_path, storage_options=storage_options)
         if index_path is None:
-            index_path = get_csi_path(vcf_path)
+            index_path = get_csi_path(vcf_path, storage_options=storage_options)
             if index_path is None:
                 raise ValueError("Cannot find .tbi or .csi file.")
 
     # Calculate the desired part file boundaries
-    file_length = get_file_length(vcf_path)
+    file_length = get_file_length(vcf_path, storage_options=storage_options)
     if num_parts is not None:
         target_part_size = file_length // num_parts
     elif target_part_size is not None:
@@ -128,7 +146,7 @@ def partition_into_regions(
     part_lengths = np.array([i * target_part_size for i in range(num_parts)])  # type: ignore
 
     # Get the file offsets from .tbi/.csi
-    index = read_index(index_path)
+    index = read_index(index_path, storage_options=storage_options)
     sequence_names = get_sequence_names(vcf_path, index)
     file_offsets, region_contig_indexes, region_positions = index.offsets()
 

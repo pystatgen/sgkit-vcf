@@ -3,14 +3,20 @@
 The implementation follows the [CSI index file format](http://samtools.github.io/hts-specs/CSIv1.pdf).
 
 """
-import gzip
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 
 from sgkit.typing import PathType
-from sgkit_vcf.utils import get_file_offset, read_bytes_as_tuple, read_bytes_as_value
+from sgkit_vcf.utils import (
+    get_file_offset,
+    open_gzip,
+    read_bytes_as_tuple,
+    read_bytes_as_value,
+)
+
+CSI_EXTENSION = ".csi"
 
 
 @dataclass
@@ -83,7 +89,9 @@ def get_first_locus_in_bin(csi: CSIIndex, bin: int) -> int:
     return (bin - first_bin_on_level) * (max_span // level_size) + 1
 
 
-def read_csi(file: PathType) -> CSIIndex:
+def read_csi(
+    file: PathType, storage_options: Optional[Dict[str, str]] = None
+) -> CSIIndex:
     """Parse a CSI file into a `CSIIndex` object.
 
     Parameters
@@ -101,7 +109,7 @@ def read_csi(file: PathType) -> CSIIndex:
     ValueError
         If the file is not a CSI file.
     """
-    with gzip.open(file) as f:
+    with open_gzip(file, storage_options=storage_options) as f:
         magic = read_bytes_as_value(f, "4s")
         if magic != b"CSI\x01":
             raise ValueError("File not in CSI format.")
