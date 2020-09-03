@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 import fsspec
@@ -20,61 +19,42 @@ def region_string(contig: str, start: int, end: Optional[int] = None) -> str:
 
 def get_tabix_path(
     vcf_path: PathType, storage_options: Optional[Dict[str, str]] = None
-) -> Optional[PathType]:
-    if isinstance(vcf_path, Path):
-        tbi_path = Path(vcf_path).parent / (Path(vcf_path).name + TABIX_EXTENSION)
-        if tbi_path.exists():
+) -> Optional[str]:
+    url = str(vcf_path)
+    storage_options = storage_options or {}
+    tbi_path = url + TABIX_EXTENSION
+    with fsspec.open(url, **storage_options) as openfile:
+        fs = openfile.fs
+        if fs.exists(tbi_path):
             return tbi_path
         else:
             return None
-    else:
-        storage_options = storage_options or {}
-        tbi_path = vcf_path + TABIX_EXTENSION
-        with fsspec.open(vcf_path, **storage_options) as openfile:
-            fs = openfile.fs
-            if fs.exists(tbi_path):
-                return tbi_path
-            else:
-                return None
 
 
 def get_csi_path(
     vcf_path: PathType, storage_options: Optional[Dict[str, str]] = None
-) -> Optional[PathType]:
-    if isinstance(vcf_path, Path):
-        csi_path = Path(vcf_path).parent / (Path(vcf_path).name + CSI_EXTENSION)
-        if csi_path.exists():
+) -> Optional[str]:
+    url = str(vcf_path)
+    storage_options = storage_options or {}
+    csi_path = url + CSI_EXTENSION
+    with fsspec.open(url, **storage_options) as openfile:
+        fs = openfile.fs
+        if fs.exists(csi_path):
             return csi_path
         else:
             return None
-    else:
-        storage_options = storage_options or {}
-        csi_path = vcf_path + CSI_EXTENSION
-        with fsspec.open(vcf_path, **storage_options) as openfile:
-            fs = openfile.fs
-            if fs.exists(csi_path):
-                return csi_path
-            else:
-                return None
 
 
 def read_index(
     index_path: PathType, storage_options: Optional[Dict[str, str]] = None
 ) -> Any:
-    if isinstance(index_path, Path):
-        if index_path.suffix == TABIX_EXTENSION:
-            return read_tabix(index_path, storage_options=storage_options)
-        elif index_path.suffix == CSI_EXTENSION:
-            return read_csi(index_path, storage_options=storage_options)
-        else:
-            raise ValueError("Only .tbi or .csi indexes are supported.")
+    url = str(index_path)
+    if url.endswith(TABIX_EXTENSION):
+        return read_tabix(url, storage_options=storage_options)
+    elif url.endswith(CSI_EXTENSION):
+        return read_csi(url, storage_options=storage_options)
     else:
-        if index_path.endswith(TABIX_EXTENSION):
-            return read_tabix(index_path, storage_options=storage_options)
-        elif index_path.endswith(CSI_EXTENSION):
-            return read_csi(index_path, storage_options=storage_options)
-        else:
-            raise ValueError("Only .tbi or .csi indexes are supported.")
+        raise ValueError("Only .tbi or .csi indexes are supported.")
 
 
 def get_sequence_names(vcf_path: PathType, index: Any) -> Any:

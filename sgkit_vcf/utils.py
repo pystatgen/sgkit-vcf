@@ -1,7 +1,5 @@
-import gzip
 import itertools
 import struct
-from pathlib import Path
 from typing import IO, Any, Dict, Iterator, Optional, Sequence, TypeVar
 
 import fsspec
@@ -32,18 +30,14 @@ def get_file_length(
     path: PathType, storage_options: Optional[Dict[str, str]] = None
 ) -> int:
     """Get the length of a file in bytes."""
-    if isinstance(path, Path):
-        return path.stat().st_size
-    else:
-        storage_options = storage_options or {}
-        with fsspec.open(path, **storage_options) as openfile:
-            fs = openfile.fs
-            size = fs.size(path)
-            if size is None:
-                raise IOError(
-                    f"Cannot determine size of file {path}"
-                )  # pragma: no cover
-            return int(size)
+    url = str(path)
+    storage_options = storage_options or {}
+    with fsspec.open(url, **storage_options) as openfile:
+        fs = openfile.fs
+        size = fs.size(url)
+        if size is None:
+            raise IOError(f"Cannot determine size of file {url}")  # pragma: no cover
+        return int(size)
 
 
 def get_file_offset(vfp: int) -> int:
@@ -96,10 +90,8 @@ def read_bytes_as_tuple(f: IO[Any], fmt: str) -> Sequence[Any]:
     return struct.Struct(fmt).unpack(data)
 
 
-def open_gzip(file: PathType, storage_options: Optional[Dict[str, str]]) -> IO[Any]:
-    if isinstance(file, Path):
-        return gzip.open(file)
-    else:
-        storage_options = storage_options or {}
-        openfile: IO[Any] = fsspec.open(file, compression="gzip", **storage_options)
-        return openfile
+def open_gzip(path: PathType, storage_options: Optional[Dict[str, str]]) -> IO[Any]:
+    url = str(path)
+    storage_options = storage_options or {}
+    openfile: IO[Any] = fsspec.open(url, compression="gzip", **storage_options)
+    return openfile
