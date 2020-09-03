@@ -36,11 +36,14 @@ def get_file_length(
         return path.stat().st_size
     else:
         storage_options = storage_options or {}
-        fs = fsspec.open(path, **storage_options).fs
-        size = fs.size(path)
-        if size is None:
-            raise IOError(f"Cannot determine size of file {path}")  # pragma: no cover
-        return int(size)
+        with fsspec.open(path, **storage_options) as openfile:
+            fs = openfile.fs
+            size = fs.size(path)
+            if size is None:
+                raise IOError(
+                    f"Cannot determine size of file {path}"
+                )  # pragma: no cover
+            return int(size)
 
 
 def get_file_offset(vfp: int) -> int:

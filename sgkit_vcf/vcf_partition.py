@@ -30,11 +30,12 @@ def get_tabix_path(
     else:
         storage_options = storage_options or {}
         tbi_path = vcf_path + TABIX_EXTENSION
-        fs = fsspec.open(vcf_path, **storage_options).fs
-        if fs.exists(tbi_path):
-            return tbi_path
-        else:
-            return None
+        with fsspec.open(vcf_path, **storage_options) as openfile:
+            fs = openfile.fs
+            if fs.exists(tbi_path):
+                return tbi_path
+            else:
+                return None
 
 
 def get_csi_path(
@@ -49,11 +50,12 @@ def get_csi_path(
     else:
         storage_options = storage_options or {}
         csi_path = vcf_path + CSI_EXTENSION
-        fs = fsspec.open(vcf_path, **storage_options).fs
-        if fs.exists(csi_path):
-            return csi_path
-        else:
-            return None
+        with fsspec.open(vcf_path, **storage_options) as openfile:
+            fs = openfile.fs
+            if fs.exists(csi_path):
+                return csi_path
+            else:
+                return None
 
 
 def read_index(
