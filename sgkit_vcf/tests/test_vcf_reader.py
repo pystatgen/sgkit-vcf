@@ -109,8 +109,11 @@ def test_vcf_to_zarr__large_vcf(shared_datadir, is_path):
     assert ds["variant_id"].dtype == "O"
 
 
-def test_vcf_to_zarr__mutable_mapping(shared_datadir):
-    path = shared_datadir / "CEUTrio.20.21.gatk3.4.g.vcf.bgz"
+@pytest.mark.parametrize(
+    "is_path", [True, False],
+)
+def test_vcf_to_zarr__mutable_mapping(shared_datadir, is_path):
+    path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
     output: MutableMapping[str, bytes] = {}
 
     vcf_to_zarr(path, output, chunk_length=5_000)
