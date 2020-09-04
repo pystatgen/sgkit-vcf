@@ -1,23 +1,23 @@
 import itertools
-import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, MutableMapping, Optional, Sequence, Union
+from typing import Generator, Iterator, MutableMapping, Optional, Sequence, Union
 
 import dask
+import fsspec
 import numpy as np
 import xarray as xr
 from cyvcf2 import VCF, Variant
 
 from sgkit.api import DIM_VARIANT, create_genotype_call_dataset
 from sgkit.typing import PathType
-from sgkit_vcf.utils import chunks
+from sgkit_vcf.utils import chunks, temporary_directory
 
 DEFAULT_ALT_NUMBER = 3  # see vcf_read.py in scikit_allel
 
 
 @contextmanager
-def open_vcf(path: PathType) -> VCF:
+def open_vcf(path: PathType) -> Generator[VCF, None, None]:
     """A context manager for opening a VCF file."""
     vcf = VCF(path)
     try:
@@ -166,6 +166,7 @@ def vcf_to_zarr_parallel(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+<<<<<<< HEAD
     temp_chunk_length: Optional[int] = None,
     tempdir: Optional[Path] = None,
 ) -> None:
@@ -175,6 +176,13 @@ def vcf_to_zarr_parallel(
         temp_chunk_length = chunk_length
 
     with tempfile.TemporaryDirectory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
+=======
+    tempdir: Optional[PathType] = None,
+) -> None:
+    """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
+
+    with temporary_directory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
+>>>>>>> Allow use of cloud stores for intermediate zarr files
 
         paths = vcf_to_zarrs(input, tmpdir, regions, temp_chunk_length, chunk_width)
 
@@ -191,7 +199,7 @@ def vcf_to_zarrs(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
-) -> Sequence[Path]:
+) -> Sequence[str]:
     """Convert specified regions of one or more VCF files to multiple Zarr on-disk stores,
     one per region.
 
@@ -214,8 +222,8 @@ def vcf_to_zarrs(
 
     Returns
     -------
-    Sequence[Path]
-        A list of paths to the Zarr outputs.
+    Sequence[str]
+        A list of URLs to the Zarr outputs.
     """
 
     if isinstance(input, str) or isinstance(input, Path):
@@ -240,17 +248,19 @@ def vcf_to_zarrs(
     tasks = []
     parts = []
     for i, input in enumerate(inputs):
+        # Use Path purely for filename manipulation, not for IO
         filename = Path(input).name
         input_region_list = input_regions[i]
         if input_region_list is None:
             # single partition case: make a list so the loop below works
             input_region_list = [None]  # type: ignore
         for r, region in enumerate(input_region_list):
-            part = Path(output) / filename / f"part-{r}.zarr"
-            parts.append(part)
+            part_url = str(Path(output) / filename / f"part-{r}.zarr")
+            output_part = fsspec.get_mapper(part_url)
+            parts.append(part_url)
             task = dask.delayed(vcf_to_zarr_sequential)(
                 input,
-                output=part,
+                output=output_part,
                 region=region,
                 chunk_length=chunk_length,
                 chunk_width=chunk_width,
@@ -261,7 +271,7 @@ def vcf_to_zarrs(
 
 
 def zarrs_to_dataset(
-    paths: Sequence[Path], chunk_length: int = 10_000, chunk_width: int = 1_000,
+    urls: Sequence[str], chunk_length: int = 10_000, chunk_width: int = 1_000,
 ) -> xr.Dataset:
     """Combine multiple Zarr stores to a single Xarray dataset.
 
@@ -269,8 +279,8 @@ def zarrs_to_dataset(
 
     Parameters
     ----------
-    paths : Sequence[Path]
-        A list of paths to the Zarr stores to combine, typically the return value of
+    urls : Sequence[Path]
+        A list of URLs to the Zarr stores to combine, typically the return value of
         `vcf_to_zarrs`.
     chunk_length : int, optional
         Length (number of variants) of chunks in which data are stored, by default 10_000.
@@ -283,7 +293,7 @@ def zarrs_to_dataset(
         A dataset representing the combined dataset.
     """
 
-    datasets = [xr.open_zarr(str(path)) for path in paths]  # type: ignore[no-untyped-call]
+    datasets = [xr.open_zarr(fsspec.get_mapper(path)) for path in urls]  # type: ignore[no-untyped-call]
 
     # Combine the datasets into one
     ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
@@ -318,8 +328,12 @@ def vcf_to_zarr(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]] = None,
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+<<<<<<< HEAD
     temp_chunk_length: Optional[int] = None,
     tempdir: Optional[Path] = None,
+=======
+    tempdir: Optional[PathType] = None,
+>>>>>>> Allow use of cloud stores for intermediate zarr files
 ) -> None:
     """Convert specified regions of one or more VCF files to a single Zarr on-disk store.
 
@@ -354,7 +368,7 @@ def vcf_to_zarr(
         to be smaller than `chunk_length` to avoid memory errors when loading files with
         very large numbers of samples. Must be evenly divisible into `chunk_length`.
         Defaults to `chunk_length` if not set.
-    tempdir : Optional[Path], optional
+    tempdir : Optional[PathType], optional
         Temporary directory where intermediate files are stored. The default None means
         use the system default temporary directory.
     """
