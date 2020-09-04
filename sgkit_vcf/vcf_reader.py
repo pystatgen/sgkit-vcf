@@ -166,13 +166,17 @@ def vcf_to_zarr_parallel(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+    temp_chunk_length: Optional[int] = None,
     tempdir: Optional[Path] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
+    if temp_chunk_length is None:
+        temp_chunk_length = chunk_length
+
     with tempfile.TemporaryDirectory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
 
-        paths = vcf_to_zarrs(input, tmpdir, regions, chunk_length, chunk_width)
+        paths = vcf_to_zarrs(input, tmpdir, regions, temp_chunk_length, chunk_width)
 
         ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
 
@@ -283,6 +287,15 @@ def zarrs_to_dataset(
 
     # Combine the datasets into one
     ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
+
+    # This is a workaround to make rechunking work when the temp_chunk_length is different to chunk_length
+    # See https://github.com/pydata/xarray/issues/4380
+    for data_var in ds.data_vars:
+        print(data_var, ds[data_var])
+        if "variants" in ds[data_var].dims:
+            del ds[data_var].encoding["chunks"]
+
+    # Rechunk to uniform chunk size
     ds: xr.Dataset = ds.chunk({"variants": chunk_length, "samples": chunk_width})
 
     # Set variable length strings to fixed length ones to avoid xarray/conventions.py:188 warning
@@ -306,6 +319,7 @@ def vcf_to_zarr(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]] = None,
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+    temp_chunk_length: Optional[int] = None,
     tempdir: Optional[Path] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to a single Zarr on-disk store.
@@ -336,6 +350,10 @@ def vcf_to_zarr(
         Length (number of variants) of chunks in which data are stored, by default 10_000.
     chunk_width : int, optional
         Width (number of samples) to use when storing chunks in output, by default 1_000.
+    temp_chunk_length : Optional[int], optional
+        Length (number of variants) of chunks for temporary intermediate files. Set this
+        to be smaller than `chunk_length` to avoid memory errors when loading files with
+        very large numbers of samples. Defaults to `chunk_length` if not set.
     tempdir : Optional[Path], optional
         Temporary directory where intermediate files are stored. The default None means
         use the system default temporary directory.
@@ -357,6 +375,7 @@ def vcf_to_zarr(
             regions=regions,
             chunk_length=chunk_length,
             chunk_width=chunk_width,
+            temp_chunk_length=temp_chunk_length,
             tempdir=tempdir,
         )
 
