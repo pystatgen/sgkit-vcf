@@ -291,7 +291,6 @@ def zarrs_to_dataset(
     # This is a workaround to make rechunking work when the temp_chunk_length is different to chunk_length
     # See https://github.com/pydata/xarray/issues/4380
     for data_var in ds.data_vars:
-        print(data_var, ds[data_var])
         if "variants" in ds[data_var].dims:
             del ds[data_var].encoding["chunks"]
 
