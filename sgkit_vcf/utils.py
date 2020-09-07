@@ -1,7 +1,7 @@
 import itertools
-import random
 import struct
 import tempfile
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any, Dict, Generator, Iterator, Optional, Sequence, TypeVar
@@ -102,12 +102,6 @@ def open_gzip(path: PathType, storage_options: Optional[Dict[str, str]]) -> IO[A
     return openfile
 
 
-def _random_name(
-    chars: str = "abcdefghijklmnopqrstuvwxyz0123456789_", size: int = 8
-) -> str:
-    return "".join(random.choice(chars) for _ in range(size))
-
-
 @contextmanager
 def temporary_directory(
     suffix: Optional[str] = None,
@@ -147,7 +141,8 @@ def temporary_directory(
     fs = fsspec.filesystem(protocol, **storage_options)
 
     # Construct a random directory name (use Path purely for filename manipulation, not for IO)
-    tempdir = str(Path(dir) / (prefix + _random_name() + suffix))
+    # The UUID is based on the host ID, current time,and a random component
+    tempdir = str(Path(dir) / (prefix + str(uuid.uuid1()) + suffix))
     fs.mkdir(tempdir)
     try:
         yield tempdir

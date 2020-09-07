@@ -24,11 +24,9 @@ def directory_with_missing_parent() -> str:
     "dir", [None, directory_with_file_scheme(), directory_with_missing_parent()],
 )
 def test_temporary_directory(dir):
-    print(dir)
     prefix = "prefix-"
     suffix = "-suffix"
     with temporary_directory(suffix=suffix, prefix=prefix, dir=dir) as tmpdir:
-
         dir = Path(tmpdir)
         assert dir.exists()
         assert dir.name.startswith(prefix)
