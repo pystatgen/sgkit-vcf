@@ -11,8 +11,8 @@ def test_temporary_directory():
 
         dir = Path(tmpdir)
         assert dir.exists()
-        assert Path(tmpdir).name.startswith(prefix)
-        assert Path(tmpdir).name.endswith(suffix)
+        assert dir.name.startswith(prefix)
+        assert dir.name.endswith(suffix)
 
         with open(dir / "file.txt", "w") as file:
             file.write("Hello")
