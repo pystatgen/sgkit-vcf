@@ -1,3 +1,4 @@
+import os
 import tempfile
 from pathlib import Path
 
@@ -32,3 +33,12 @@ def test_temporary_directory(dir):
             file.write("Hello")
 
     assert not dir.exists()
+
+
+def test_temporary_directory__no_permission():
+    # create a local temporary directory using Python tempdir
+    with tempfile.TemporaryDirectory() as dir:
+        os.chmod(dir, 0o444)  # make it read-only
+        with pytest.raises(PermissionError):
+            with temporary_directory(dir=dir):
+                pass
