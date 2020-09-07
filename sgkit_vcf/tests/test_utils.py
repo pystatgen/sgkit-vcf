@@ -1,13 +1,27 @@
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from sgkit_vcf.utils import temporary_directory
 
 
-def test_temporary_directory():
+def directory_with_missing_parent() -> str:
+    # create a local temporary directory using Python tempdir
+    with tempfile.TemporaryDirectory() as dir:
+        pass
+    # we know it doesn't exist
+    assert not Path(dir).exists()
+    return dir
 
+
+@pytest.mark.parametrize(
+    "dir", [None, directory_with_missing_parent()],
+)
+def test_temporary_directory(dir):
     prefix = "prefix-"
     suffix = "-suffix"
-    with temporary_directory(suffix=suffix, prefix=prefix) as tmpdir:
+    with temporary_directory(suffix=suffix, prefix=prefix, dir=dir) as tmpdir:
 
         dir = Path(tmpdir)
         assert dir.exists()
