@@ -12,7 +12,7 @@ def directory_with_file_scheme() -> str:
 
 
 def directory_with_missing_parent() -> str:
-    # create a local temporary directory using Python tempdir
+    # create a local temporary directory using Python tempfile
     with tempfile.TemporaryDirectory() as dir:
         pass
     # we know it doesn't exist
@@ -39,9 +39,9 @@ def test_temporary_directory(dir):
 
 
 def test_temporary_directory__no_permission():
-    # create a local temporary directory using Python tempdir
+    # create a local temporary directory using Python tempfile
     with tempfile.TemporaryDirectory() as dir:
         os.chmod(dir, 0o444)  # make it read-only
         with pytest.raises(PermissionError):
             with temporary_directory(dir=dir):
-                pass
+                pass  # pragma: no cover
