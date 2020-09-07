@@ -141,8 +141,7 @@ def temporary_directory(
     fs = fsspec.filesystem(protocol, **storage_options)
 
     # Construct a random directory name (use Path purely for filename manipulation, not for IO)
-    # The UUID is based on the host ID, current time,and a random component
-    tempdir = str(Path(dir) / (prefix + str(uuid.uuid1()) + suffix))
+    tempdir = str(Path(dir) / (prefix + str(uuid.uuid4()) + suffix))
     fs.mkdir(tempdir)
     try:
         yield tempdir
