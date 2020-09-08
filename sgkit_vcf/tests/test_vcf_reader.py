@@ -159,6 +159,49 @@ def test_vcf_to_zarr__parallel(shared_datadir, is_path):
 
 
 @pytest.mark.parametrize(
+    "is_path", [False],
+)
+def test_vcf_to_zarr__parallel_temp_chunk_length(shared_datadir, is_path):
+    path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
+    output = "vcf_concat.zarr"
+    regions = ["20", "21"]
+
+    # Use a temp_chunk_length that is smaller than chunk_length
+    vcf_to_zarr(
+        path, output, regions=regions, chunk_length=5_000, temp_chunk_length=2_500
+    )
+    ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]
+
+    assert ds["sample_id"].shape == (1,)
+    assert ds["call_genotype"].shape == (19910, 1, 2)
+    assert ds["call_genotype_mask"].shape == (19910, 1, 2)
+    assert ds["call_genotype_phased"].shape == (19910, 1)
+    assert ds["variant_allele"].shape == (19910, 4)
+    assert ds["variant_contig"].shape == (19910,)
+    assert ds["variant_id"].shape == (19910,)
+    assert ds["variant_id_mask"].shape == (19910,)
+    assert ds["variant_position"].shape == (19910,)
+
+    assert ds["variant_allele"].dtype == "S48"
+    assert ds["variant_id"].dtype == "S1"
+
+
+def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(shared_datadir):
+    path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", False)
+    output = "vcf_concat.zarr"
+    regions = ["20", "21"]
+
+    with pytest.raises(
+        ValueError,
+        match=r"Temporary chunk length in variant dimension \(4000\) must evenly divide target chunk length 5000",
+    ):
+        # Use a temp_chunk_length that does not divide into chunk_length
+        vcf_to_zarr(
+            path, output, regions=regions, chunk_length=5_000, temp_chunk_length=4_000
+        )
+
+
+@pytest.mark.parametrize(
     "is_path", [True, False],
 )
 def test_vcf_to_zarr__parallel_partitioned(shared_datadir, is_path):
