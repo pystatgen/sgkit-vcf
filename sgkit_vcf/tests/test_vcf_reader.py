@@ -161,7 +161,7 @@ def test_vcf_to_zarr__parallel(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [False],
 )
-def test_vcf_to_zarr__parallel_temp_chunk_width(shared_datadir, is_path):
+def test_vcf_to_zarr__parallel_temp_chunk_length(shared_datadir, is_path):
     path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
     output = "vcf_concat.zarr"
     regions = ["20", "21"]
@@ -184,6 +184,21 @@ def test_vcf_to_zarr__parallel_temp_chunk_width(shared_datadir, is_path):
 
     assert ds["variant_allele"].dtype == "S48"
     assert ds["variant_id"].dtype == "S1"
+
+
+def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(shared_datadir):
+    path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", False)
+    output = "vcf_concat.zarr"
+    regions = ["20", "21"]
+
+    with pytest.raises(
+        ValueError,
+        match=r"Temporary chunk length in variant dimension \(4000\) must evenly divide target chunk size 5000",
+    ):
+        # Use a temp_chunk_length that does not divide into chunk_length
+        vcf_to_zarr(
+            path, output, regions=regions, chunk_length=5_000, temp_chunk_length=4_000
+        )
 
 
 @pytest.mark.parametrize(

@@ -352,11 +352,19 @@ def vcf_to_zarr(
     temp_chunk_length : Optional[int], optional
         Length (number of variants) of chunks for temporary intermediate files. Set this
         to be smaller than `chunk_length` to avoid memory errors when loading files with
-        very large numbers of samples. Defaults to `chunk_length` if not set.
+        very large numbers of samples. Must be evenly divisible into `chunk_length`.
+        Defaults to `chunk_length` if not set.
     tempdir : Optional[Path], optional
         Temporary directory where intermediate files are stored. The default None means
         use the system default temporary directory.
     """
+
+    if temp_chunk_length is not None:
+        if chunk_length % temp_chunk_length != 0:
+            raise ValueError(
+                f"Temporary chunk length in variant dimension ({temp_chunk_length}) "
+                f"must evenly divide target chunk size {chunk_length}"
+            )
     if (isinstance(input, str) or isinstance(input, Path)) and (
         regions is None or isinstance(regions, str)
     ):
