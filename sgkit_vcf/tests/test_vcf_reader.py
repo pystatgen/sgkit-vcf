@@ -193,7 +193,7 @@ def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(shared_datadir):
 
     with pytest.raises(
         ValueError,
-        match=r"Temporary chunk length in variant dimension \(4000\) must evenly divide target chunk size 5000",
+        match=r"Temporary chunk length in variant dimension \(4000\) must evenly divide target chunk length 5000",
     ):
         # Use a temp_chunk_length that does not divide into chunk_length
         vcf_to_zarr(
