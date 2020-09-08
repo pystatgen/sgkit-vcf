@@ -363,7 +363,7 @@ def vcf_to_zarr(
         if chunk_length % temp_chunk_length != 0:
             raise ValueError(
                 f"Temporary chunk length in variant dimension ({temp_chunk_length}) "
-                f"must evenly divide target chunk size {chunk_length}"
+                f"must evenly divide target chunk length {chunk_length}"
             )
     if (isinstance(input, str) or isinstance(input, Path)) and (
         regions is None or isinstance(regions, str)
