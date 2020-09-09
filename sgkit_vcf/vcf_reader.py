@@ -166,23 +166,15 @@ def vcf_to_zarr_parallel(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
-<<<<<<< HEAD
     temp_chunk_length: Optional[int] = None,
-    tempdir: Optional[Path] = None,
+    tempdir: Optional[PathType] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
     if temp_chunk_length is None:
         temp_chunk_length = chunk_length
 
-    with tempfile.TemporaryDirectory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
-=======
-    tempdir: Optional[PathType] = None,
-) -> None:
-    """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
-
     with temporary_directory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
->>>>>>> Allow use of cloud stores for intermediate zarr files
 
         paths = vcf_to_zarrs(input, tmpdir, regions, temp_chunk_length, chunk_width)
 
@@ -328,12 +320,8 @@ def vcf_to_zarr(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]] = None,
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
-<<<<<<< HEAD
     temp_chunk_length: Optional[int] = None,
-    tempdir: Optional[Path] = None,
-=======
     tempdir: Optional[PathType] = None,
->>>>>>> Allow use of cloud stores for intermediate zarr files
 ) -> None:
     """Convert specified regions of one or more VCF files to a single Zarr on-disk store.
 
