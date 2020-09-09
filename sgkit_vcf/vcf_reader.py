@@ -1,7 +1,7 @@
 import itertools
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Iterator, MutableMapping, Optional, Sequence, Union
+from typing import Dict, Generator, Iterator, MutableMapping, Optional, Sequence, Union
 
 import dask
 import fsspec
@@ -11,7 +11,7 @@ from cyvcf2 import VCF, Variant
 
 from sgkit.api import DIM_VARIANT, create_genotype_call_dataset
 from sgkit.typing import PathType
-from sgkit_vcf.utils import chunks, temporary_directory
+from sgkit_vcf.utils import build_url, chunks, temporary_directory, url_filename
 
 DEFAULT_ALT_NUMBER = 3  # see vcf_read.py in scikit_allel
 
@@ -168,17 +168,27 @@ def vcf_to_zarr_parallel(
     chunk_width: int = 1_000,
     temp_chunk_length: Optional[int] = None,
     tempdir: Optional[PathType] = None,
+    tempdir_storage_options: Optional[Dict[str, str]] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to zarr files, then concat, rechunk, write to zarr"""
 
     if temp_chunk_length is None:
         temp_chunk_length = chunk_length
 
-    with temporary_directory(prefix="vcf_to_zarr_", dir=tempdir) as tmpdir:
+    with temporary_directory(
+        prefix="vcf_to_zarr_", dir=tempdir, storage_options=tempdir_storage_options
+    ) as tmpdir:
 
-        paths = vcf_to_zarrs(input, tmpdir, regions, temp_chunk_length, chunk_width)
+        paths = vcf_to_zarrs(
+            input,
+            tmpdir,
+            regions,
+            temp_chunk_length,
+            chunk_width,
+            tempdir_storage_options,
+        )
 
-        ds = zarrs_to_dataset(paths, chunk_length, chunk_width)
+        ds = zarrs_to_dataset(paths, chunk_length, chunk_width, tempdir_storage_options)
 
         # Ensure Dask task graph is efficient, see https://github.com/dask/dask/issues/5105
         with dask.config.set({"optimization.fuse.ave-width": 50}):
@@ -191,6 +201,7 @@ def vcf_to_zarrs(
     regions: Union[None, Sequence[str], Sequence[Optional[Sequence[str]]]],
     chunk_length: int = 10_000,
     chunk_width: int = 1_000,
+    output_storage_options: Optional[Dict[str, str]] = None,
 ) -> Sequence[str]:
     """Convert specified regions of one or more VCF files to multiple Zarr on-disk stores,
     one per region.
@@ -211,12 +222,16 @@ def vcf_to_zarrs(
         Length (number of variants) of chunks in which data are stored, by default 10_000.
     chunk_width : int, optional
         Width (number of samples) to use when storing chunks in output, by default 1_000.
+    output_storage_options : Optional[Dict[str, str]], optional
+        Any additional parameters for the storage backend, for the output (see `fsspec.open`).
 
     Returns
     -------
     Sequence[str]
         A list of URLs to the Zarr outputs.
     """
+
+    output_storage_options = output_storage_options or {}
 
     if isinstance(input, str) or isinstance(input, Path):
         # Single input
@@ -240,15 +255,14 @@ def vcf_to_zarrs(
     tasks = []
     parts = []
     for i, input in enumerate(inputs):
-        # Use Path purely for filename manipulation, not for IO
-        filename = Path(input).name
+        filename = url_filename(str(input))
         input_region_list = input_regions[i]
         if input_region_list is None:
             # single partition case: make a list so the loop below works
             input_region_list = [None]  # type: ignore
         for r, region in enumerate(input_region_list):
-            part_url = str(Path(output) / filename / f"part-{r}.zarr")
-            output_part = fsspec.get_mapper(part_url)
+            part_url = build_url(str(output), f"{filename}/part-{r}.zarr")
+            output_part = fsspec.get_mapper(part_url, **output_storage_options)
             parts.append(part_url)
             task = dask.delayed(vcf_to_zarr_sequential)(
                 input,
@@ -263,7 +277,10 @@ def vcf_to_zarrs(
 
 
 def zarrs_to_dataset(
-    urls: Sequence[str], chunk_length: int = 10_000, chunk_width: int = 1_000,
+    urls: Sequence[str],
+    chunk_length: int = 10_000,
+    chunk_width: int = 1_000,
+    storage_options: Optional[Dict[str, str]] = None,
 ) -> xr.Dataset:
     """Combine multiple Zarr stores to a single Xarray dataset.
 
@@ -278,6 +295,8 @@ def zarrs_to_dataset(
         Length (number of variants) of chunks in which data are stored, by default 10_000.
     chunk_width : int, optional
         Width (number of samples) to use when storing chunks in output, by default 1_000.
+    storage_options : Optional[Dict[str, str]], optional
+        Any additional parameters for the storage backend (see `fsspec.open`).
 
     Returns
     -------
@@ -285,7 +304,9 @@ def zarrs_to_dataset(
         A dataset representing the combined dataset.
     """
 
-    datasets = [xr.open_zarr(fsspec.get_mapper(path)) for path in urls]  # type: ignore[no-untyped-call]
+    storage_options = storage_options or {}
+
+    datasets = [xr.open_zarr(fsspec.get_mapper(path, **storage_options)) for path in urls]  # type: ignore[no-untyped-call]
 
     # Combine the datasets into one
     ds = xr.concat(datasets, dim="variants", data_vars="minimal")  # type: ignore[no-untyped-call, no-redef]
@@ -322,6 +343,7 @@ def vcf_to_zarr(
     chunk_width: int = 1_000,
     temp_chunk_length: Optional[int] = None,
     tempdir: Optional[PathType] = None,
+    tempdir_storage_options: Optional[Dict[str, str]] = None,
 ) -> None:
     """Convert specified regions of one or more VCF files to a single Zarr on-disk store.
 
@@ -359,6 +381,8 @@ def vcf_to_zarr(
     tempdir : Optional[PathType], optional
         Temporary directory where intermediate files are stored. The default None means
         use the system default temporary directory.
+    tempdir_storage_options: Optional[Dict[str, str]], optional
+        Any additional parameters for the storage backend for tempdir (see `fsspec.open`).
     """
 
     if temp_chunk_length is not None:
@@ -386,6 +410,7 @@ def vcf_to_zarr(
             chunk_width=chunk_width,
             temp_chunk_length=temp_chunk_length,
             tempdir=tempdir,
+            tempdir_storage_options=tempdir_storage_options,
         )
 
 

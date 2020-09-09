@@ -3,7 +3,6 @@ import struct
 import tempfile
 import uuid
 from contextlib import contextmanager
-from pathlib import Path
 from typing import IO, Any, Dict, Generator, Iterator, Optional, Sequence, TypeVar
 from urllib.parse import urlparse
 
@@ -102,6 +101,19 @@ def open_gzip(path: PathType, storage_options: Optional[Dict[str, str]]) -> IO[A
     return openfile
 
 
+def url_filename(url: str) -> str:
+    """Extract the filename from a URL"""
+    return url.split("/")[-1]
+
+
+def build_url(dir_url: str, child_path: str) -> str:
+    """Combine a URL for a directory with a child path"""
+    if dir_url.endswith("/"):
+        return f"{dir_url}{child_path}"
+    else:
+        return f"{dir_url}/{child_path}"
+
+
 @contextmanager
 def temporary_directory(
     suffix: Optional[str] = None,
@@ -140,8 +152,8 @@ def temporary_directory(
     protocol = urlparse(str(dir)).scheme
     fs = fsspec.filesystem(protocol, **storage_options)
 
-    # Construct a random directory name (use Path purely for filename manipulation, not for IO)
-    tempdir = str(Path(dir) / (prefix + str(uuid.uuid4()) + suffix))
+    # Construct a random directory name
+    tempdir = build_url(dir, prefix + str(uuid.uuid4()) + suffix)
     fs.mkdir(tempdir)
     try:
         yield tempdir

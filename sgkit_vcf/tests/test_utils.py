@@ -2,13 +2,11 @@ import os
 import tempfile
 from pathlib import Path
 
+import fsspec
 import pytest
+from callee.strings import StartsWith
 
-from sgkit_vcf.utils import temporary_directory
-
-
-def directory_with_file_scheme() -> str:
-    return f"file:/{tempfile.gettempdir()}"
+from sgkit_vcf.utils import build_url, temporary_directory
 
 
 def directory_with_missing_parent() -> str:
@@ -21,7 +19,7 @@ def directory_with_missing_parent() -> str:
 
 
 @pytest.mark.parametrize(
-    "dir", [None, directory_with_file_scheme(), directory_with_missing_parent()],
+    "dir", [None, directory_with_missing_parent()],
 )
 def test_temporary_directory(dir):
     prefix = "prefix-"
@@ -45,3 +43,26 @@ def test_temporary_directory__no_permission():
         with pytest.raises(PermissionError):
             with temporary_directory(dir=dir):
                 pass  # pragma: no cover
+
+
+def test_non_local_filesystem(mocker):
+    # mock out fsspec calls
+    mock = mocker.patch("fsspec.filesystem")
+    myfs = mocker.MagicMock()
+    mock.return_value = myfs
+
+    # call function
+    with temporary_directory(prefix="mytmp", dir="myfs://path/file"):
+        pass
+
+    # check expected called were made
+    fsspec.filesystem.assert_called_once_with("myfs")
+    myfs.mkdir.assert_called_once_with(StartsWith("myfs://path/file/mytmp"))
+    myfs.rm.assert_called_once_with(
+        StartsWith("myfs://path/file/mytmp"), recursive=True
+    )
+
+
+def test_build_url():
+    assert build_url("http://host/path", "subpath") == "http://host/path/subpath"
+    assert build_url("http://host/path/", "subpath") == "http://host/path/subpath"
