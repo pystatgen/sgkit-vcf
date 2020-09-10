@@ -9,6 +9,10 @@ from callee.strings import StartsWith
 from sgkit_vcf.utils import build_url, temporary_directory
 
 
+def directory_with_file_scheme() -> str:
+    return f"file://{tempfile.gettempdir()}"
+
+
 def directory_with_missing_parent() -> str:
     # create a local temporary directory using Python tempfile
     with tempfile.TemporaryDirectory() as dir:
@@ -19,12 +23,14 @@ def directory_with_missing_parent() -> str:
 
 
 @pytest.mark.parametrize(
-    "dir", [None, directory_with_missing_parent()],
+    "dir", [None, directory_with_file_scheme(), directory_with_missing_parent()],
 )
 def test_temporary_directory(dir):
     prefix = "prefix-"
     suffix = "-suffix"
     with temporary_directory(suffix=suffix, prefix=prefix, dir=dir) as tmpdir:
+        if tmpdir.startswith("file:///"):
+            tmpdir = tmpdir[7:]
         dir = Path(tmpdir)
         assert dir.exists()
         assert dir.name.startswith(prefix)
