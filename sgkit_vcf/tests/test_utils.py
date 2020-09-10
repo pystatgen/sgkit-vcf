@@ -72,3 +72,17 @@ def test_non_local_filesystem(mocker):
 def test_build_url():
     assert build_url("http://host/path", "subpath") == "http://host/path/subpath"
     assert build_url("http://host/path/", "subpath") == "http://host/path/subpath"
+    assert (
+        build_url("http://host/path?a=b", "subpath") == "http://host/path/subpath?a=b"
+    )
+    assert (
+        build_url("http://host/path/?a=b", "subpath") == "http://host/path/subpath?a=b"
+    )
+    assert build_url("http://host/path#a", "subpath") == "http://host/path/subpath#a"
+    assert build_url("s3://host/path", "subpath") == "s3://host/path/subpath"
+    assert build_url("relative_path/path", "subpath") == "relative_path/path/subpath"
+    assert build_url("/absolute_path/path", "subpath") == "/absolute_path/path/subpath"
+    assert (
+        build_url("http://host/a%20path", "subpath") == "http://host/a%20path/subpath"
+    )
+    assert build_url("http://host/a path", "subpath") == "http://host/a%20path/subpath"

@@ -110,7 +110,9 @@ def url_filename(url: str) -> str:
 
 def build_url(dir_url: str, child_path: str) -> str:
     """Combine a URL for a directory with a child path"""
-    return str(URL(dir_url) / child_path)
+    url = URL(dir_url)
+    # the division (/) operator discards query and fragment, so add them back
+    return str((url / child_path).with_query(url.query).with_fragment(url.fragment))
 
 
 @contextmanager
