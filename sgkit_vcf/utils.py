@@ -3,12 +3,11 @@ import struct
 import tempfile
 import uuid
 from contextlib import contextmanager
-from pathlib import Path
 from typing import IO, Any, Dict, Generator, Iterator, Optional, Sequence, TypeVar
 from urllib.parse import urlparse
 
 import fsspec
-from uritools import urisplit, uriunsplit
+from yarl import URL
 
 from sgkit.typing import PathType
 
@@ -105,18 +104,13 @@ def open_gzip(path: PathType, storage_options: Optional[Dict[str, str]]) -> IO[A
 
 def url_filename(url: str) -> str:
     """Extract the filename from a URL"""
-    parts = urisplit(url)
-    return Path(parts.path).name
+    filename: str = URL(url).name
+    return filename
 
 
 def build_url(dir_url: str, child_path: str) -> str:
     """Combine a URL for a directory with a child path"""
-    parts = urisplit(dir_url)
-    path = str(Path(parts.path) / child_path)
-    res: str = uriunsplit(
-        (parts.scheme, parts.authority, path, parts.query, parts.fragment)
-    )
-    return res
+    return str(URL(dir_url) / child_path)
 
 
 @contextmanager

@@ -3,7 +3,7 @@ dask[array]
 fsspec
 numba
 numpy
-uritools
 xarray
+yarl
 zarr
 git+https://github.com/pystatgen/sgkit
