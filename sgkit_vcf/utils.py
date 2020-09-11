@@ -155,8 +155,8 @@ def temporary_directory(
 
     # Construct a random directory name
     tempdir = build_url(dir, prefix + str(uuid.uuid4()) + suffix)
-    fs.mkdir(tempdir)
     try:
+        fs.mkdir(tempdir)
         yield tempdir
     finally:
         # Remove the temporary directory on exiting the context manager
