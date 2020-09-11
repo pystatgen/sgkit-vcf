@@ -3,7 +3,7 @@ import struct
 import tempfile
 import uuid
 from contextlib import contextmanager
-from typing import IO, Any, Dict, Generator, Iterator, Optional, Sequence, TypeVar
+from typing import IO, Any, Dict, Iterator, Optional, Sequence, TypeVar
 from urllib.parse import urlparse
 
 import fsspec
@@ -121,7 +121,7 @@ def temporary_directory(
     prefix: Optional[str] = None,
     dir: Optional[PathType] = None,
     storage_options: Optional[Dict[str, str]] = None,
-) -> Generator[str, None, None]:
+) -> Iterator[str]:
     """Create a temporary directory in a fsspec filesystem.
 
     Parameters

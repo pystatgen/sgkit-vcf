@@ -1,7 +1,7 @@
 import itertools
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Generator, Iterator, MutableMapping, Optional, Sequence, Union
+from typing import Dict, Iterator, MutableMapping, Optional, Sequence, Union
 
 import dask
 import fsspec
@@ -17,7 +17,7 @@ DEFAULT_ALT_NUMBER = 3  # see vcf_read.py in scikit_allel
 
 
 @contextmanager
-def open_vcf(path: PathType) -> Generator[VCF, None, None]:
+def open_vcf(path: PathType) -> Iterator[VCF]:
     """A context manager for opening a VCF file."""
     vcf = VCF(path)
     try:
