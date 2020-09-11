@@ -58,11 +58,13 @@ def test_non_local_filesystem(mocker):
     mock.return_value = myfs
 
     # call function
-    with temporary_directory(prefix="mytmp", dir="myfs://path/file"):
+    with temporary_directory(
+        prefix="mytmp", dir="myfs://path/file", storage_options=dict(a="b")
+    ):
         pass
 
     # check expected called were made
-    fsspec.filesystem.assert_called_once_with("myfs")
+    fsspec.filesystem.assert_called_once_with("myfs", a="b")
     myfs.mkdir.assert_called_once_with(StartsWith("myfs://path/file/mytmp"))
     myfs.rm.assert_called_once_with(
         StartsWith("myfs://path/file/mytmp"), recursive=True
