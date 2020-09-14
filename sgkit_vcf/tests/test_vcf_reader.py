@@ -12,9 +12,9 @@ from sgkit_vcf.tests.utils import path_for_test
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__small_vcf(shared_datadir, is_path):
+def test_vcf_to_zarr__small_vcf(shared_datadir, is_path, tmp_path):
     path = path_for_test(shared_datadir, "sample.vcf.gz", is_path)
-    output = "vcf.zarr"
+    output = tmp_path.joinpath("vcf.zarr").as_posix()
 
     vcf_to_zarr(path, output, chunk_length=5, chunk_width=2)
     ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]
@@ -88,9 +88,9 @@ def test_vcf_to_zarr__small_vcf(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__large_vcf(shared_datadir, is_path):
+def test_vcf_to_zarr__large_vcf(shared_datadir, is_path, tmp_path):
     path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
-    output = "vcf.zarr"
+    output = tmp_path.joinpath("vcf.zarr").as_posix()
 
     vcf_to_zarr(path, output, chunk_length=5_000)
     ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]
@@ -136,9 +136,9 @@ def test_vcf_to_zarr__mutable_mapping(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__parallel(shared_datadir, is_path):
+def test_vcf_to_zarr__parallel(shared_datadir, is_path, tmp_path):
     path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
     regions = ["20", "21"]
 
     vcf_to_zarr(path, output, regions=regions, chunk_length=5_000)
@@ -161,9 +161,9 @@ def test_vcf_to_zarr__parallel(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [False],
 )
-def test_vcf_to_zarr__parallel_temp_chunk_length(shared_datadir, is_path):
+def test_vcf_to_zarr__parallel_temp_chunk_length(shared_datadir, is_path, tmp_path):
     path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", is_path)
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
     regions = ["20", "21"]
 
     # Use a temp_chunk_length that is smaller than chunk_length
@@ -186,9 +186,11 @@ def test_vcf_to_zarr__parallel_temp_chunk_length(shared_datadir, is_path):
     assert ds["variant_id"].dtype == "S1"
 
 
-def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(shared_datadir):
+def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(
+    shared_datadir, tmp_path
+):
     path = path_for_test(shared_datadir, "CEUTrio.20.21.gatk3.4.g.vcf.bgz", False)
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
     regions = ["20", "21"]
 
     with pytest.raises(
@@ -204,13 +206,13 @@ def test_vcf_to_zarr__parallel_temp_chunk_length_not_divisible(shared_datadir):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__parallel_partitioned(shared_datadir, is_path):
+def test_vcf_to_zarr__parallel_partitioned(shared_datadir, is_path, tmp_path):
     path = path_for_test(
         shared_datadir,
         "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf.gz",
         is_path,
     )
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
 
     regions = partition_into_regions(path, num_parts=4)
 
@@ -224,12 +226,12 @@ def test_vcf_to_zarr__parallel_partitioned(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__multiple(shared_datadir, is_path):
+def test_vcf_to_zarr__multiple(shared_datadir, is_path, tmp_path):
     paths = [
         path_for_test(shared_datadir, "CEUTrio.20.gatk3.4.g.vcf.bgz", is_path),
         path_for_test(shared_datadir, "CEUTrio.21.gatk3.4.g.vcf.bgz", is_path),
     ]
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
 
     vcf_to_zarr(paths, output, chunk_length=5_000)
     ds = xr.open_zarr(output)  # type: ignore[no-untyped-call]
@@ -250,12 +252,12 @@ def test_vcf_to_zarr__multiple(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__multiple_partitioned(shared_datadir, is_path):
+def test_vcf_to_zarr__multiple_partitioned(shared_datadir, is_path, tmp_path):
     paths = [
         path_for_test(shared_datadir, "CEUTrio.20.gatk3.4.g.vcf.bgz", is_path),
         path_for_test(shared_datadir, "CEUTrio.21.gatk3.4.g.vcf.bgz", is_path),
     ]
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
 
     regions = [partition_into_regions(path, num_parts=2) for path in paths]
 
@@ -278,12 +280,14 @@ def test_vcf_to_zarr__multiple_partitioned(shared_datadir, is_path):
 @pytest.mark.parametrize(
     "is_path", [True, False],
 )
-def test_vcf_to_zarr__mutiple_partitioned_invalid_regions(shared_datadir, is_path):
+def test_vcf_to_zarr__mutiple_partitioned_invalid_regions(
+    shared_datadir, is_path, tmp_path
+):
     paths = [
         path_for_test(shared_datadir, "CEUTrio.20.gatk3.4.g.vcf.bgz", is_path),
         path_for_test(shared_datadir, "CEUTrio.21.gatk3.4.g.vcf.bgz", is_path),
     ]
-    output = "vcf_concat.zarr"
+    output = tmp_path.joinpath("vcf_concat.zarr").as_posix()
 
     # invalid regions, should be a sequence of sequences
     regions = partition_into_regions(paths[0], num_parts=2)
