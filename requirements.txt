@@ -6,4 +6,6 @@ numpy
 xarray
 yarl
 zarr
+# Remove typing extensions after https://github.com/pystatgen/sgkit/pull/253
+typing_extensions
 git+https://github.com/pystatgen/sgkit
