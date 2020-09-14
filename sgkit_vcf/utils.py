@@ -1,8 +1,13 @@
 import itertools
 import struct
+import tempfile
+import uuid
+from contextlib import contextmanager
 from typing import IO, Any, Dict, Iterator, Optional, Sequence, TypeVar
+from urllib.parse import urlparse
 
 import fsspec
+from yarl import URL
 
 from sgkit.typing import PathType
 
@@ -95,3 +100,64 @@ def open_gzip(path: PathType, storage_options: Optional[Dict[str, str]]) -> IO[A
     storage_options = storage_options or {}
     openfile: IO[Any] = fsspec.open(url, compression="gzip", **storage_options)
     return openfile
+
+
+def url_filename(url: str) -> str:
+    """Extract the filename from a URL"""
+    filename: str = URL(url).name
+    return filename
+
+
+def build_url(dir_url: str, child_path: str) -> str:
+    """Combine a URL for a directory with a child path"""
+    url = URL(dir_url)
+    # the division (/) operator discards query and fragment, so add them back
+    return str((url / child_path).with_query(url.query).with_fragment(url.fragment))
+
+
+@contextmanager
+def temporary_directory(
+    suffix: Optional[str] = None,
+    prefix: Optional[str] = None,
+    dir: Optional[PathType] = None,
+    storage_options: Optional[Dict[str, str]] = None,
+) -> Iterator[str]:
+    """Create a temporary directory in a fsspec filesystem.
+
+    Parameters
+    ----------
+    suffix : Optional[str], optional
+        If not None, the name of the temporary directory will end with that suffix.
+    prefix : Optional[str], optional
+        If not None, the name of the temporary directory will start with that prefix.
+    dir : Optional[PathType], optional
+        If not None, the temporary directory will be created in that directory, otherwise
+        the local filesystem directory returned by `tempfile.gettempdir()` will be used.
+        The directory may be specified as any fsspec URL.
+    storage_options : Optional[Dict[str, str]], optional
+        Any additional parameters for the storage backend (see `fsspec.open`).
+
+    Yields
+    -------
+    Generator[str, None, None]
+        A context manager yielding the fsspec URL to the created directory.
+    """
+
+    # Fill in defaults
+    suffix = suffix or ""
+    prefix = prefix or ""
+    dir = dir or tempfile.gettempdir()
+    storage_options = storage_options or {}
+
+    # Find the filesystem by looking at the URL scheme (protocol), empty means local filesystem
+    protocol = urlparse(str(dir)).scheme
+    fs = fsspec.filesystem(protocol, **storage_options)
+
+    # Construct a random directory name
+    tempdir = build_url(dir, prefix + str(uuid.uuid4()) + suffix)
+    try:
+        fs.mkdir(tempdir)
+        yield tempdir
+    finally:
+        # Remove the temporary directory on exiting the context manager
+        fs.rm(tempdir, recursive=True)

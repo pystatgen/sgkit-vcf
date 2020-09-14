@@ -4,5 +4,6 @@ fsspec
 numba
 numpy
 xarray
+yarl
 zarr
 git+https://github.com/pystatgen/sgkit
