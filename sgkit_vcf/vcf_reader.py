@@ -9,7 +9,7 @@ import numpy as np
 import xarray as xr
 from cyvcf2 import VCF, Variant
 
-from sgkit.api import DIM_VARIANT, create_genotype_call_dataset
+from sgkit.model import DIM_VARIANT, create_genotype_call_dataset
 from sgkit.typing import PathType
 from sgkit_vcf.utils import build_url, chunks, temporary_directory, url_filename
 
